@@ -19,7 +19,6 @@ st.set_page_config(
 
 # --- FUNKCJE POMOCNICZE (BASE64 I OBRAZY) ---
 def get_base64_of_bin_file(bin_file):
-    """Zmienia plik na format Base64 (potrzebne do CSS)"""
     try:
         with open(bin_file, 'rb') as f:
             data = f.read()
@@ -28,7 +27,6 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 def display_safe_image(filename_base, caption=""):
-    """Szuka pliku, ładuje go bezpiecznie i wyświetla."""
     extensions = ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']
     for ext in extensions:
         file_path = f"{filename_base}{ext}"
@@ -44,13 +42,11 @@ def display_safe_image(filename_base, caption=""):
     st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' do repozytorium na GitHub.")
 
 # --- 2. ZAAWANSOWANY CSS Z DYNAMICZNYM TŁEM ---
-# Generujemy tło z mapy, jeśli istnieje
 mapa_b64 = get_base64_of_bin_file("mapa.png")
 if not mapa_b64:
     mapa_b64 = get_base64_of_bin_file("mapa.jpg")
 
 if mapa_b64:
-    # Używamy mapy jako tła z nałożonym "mlecznym" filtrem dla czytelności tekstu (rgba 0.88)
     bg_css = f"""
     .stApp {{
         background-image: linear-gradient(rgba(248, 249, 250, 0.88), rgba(248, 249, 250, 0.88)), url("data:image/png;base64,{mapa_b64}");
@@ -61,7 +57,6 @@ if mapa_b64:
     }}
     """
 else:
-    # Zapasowe tło, gdyby mapa się nie wgrała
     bg_css = """
     .stApp {
         background-color: #f8f9fa;
@@ -80,10 +75,8 @@ st.markdown(f"""
     #MainMenu {{ visibility: hidden; }}
     section[data-testid="stSidebar"] {{ display: none; }}
 
-    /* Import czcionek */
     @import url('https://fonts.googleapis.com/css2?family=Anton&family=Open+Sans:wght@400;600;800&family=Libre+Barcode+39+Text&display=swap');
 
-    /* Wstrzyknięcie dynamicznego tła */
     {bg_css}
 
     /* --- BOARDING PASS UI --- */
@@ -115,7 +108,7 @@ st.markdown(f"""
     .stTabs [data-baseweb="tab-list"] {{ background-color: rgba(255, 255, 255, 0.8); border-radius: 12px; padding: 6px; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); backdrop-filter: blur(5px); }}
     .stTabs [data-baseweb="tab"] {{ border-radius: 8px !important; padding: 10px 20px !important; border: none !important; font-weight: 800 !important; color: #64748b; transition: all 0.2s ease; text-transform: uppercase; }}
     .stTabs [aria-selected="true"] {{ background-color: #0B2447 !important; color: #FFC72C !important; box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important; }}
-    .stButton>button {{ background-color: #C62828 !important; color: white !important; border-radius: 10px !important; border: none !important; padding: 10px 20px !important; font-weight: 800 !important; box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3) !important; text-transform: uppercase; }}
+    .stButton>button {{ background-color: #C62828 !important; color: white !important; border-radius: 8px !important; border: none !important; padding: 5px 15px !important; font-weight: 800 !important; box-shadow: 0 2px 6px rgba(198, 40, 40, 0.3) !important; text-transform: uppercase; }}
     div[data-testid="stDataFrame"] {{ background-color: rgba(255, 255, 255, 0.95) !important; border-radius: 16px !important; overflow: hidden !important; border: 2px solid #e2e8f0 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important; backdrop-filter: blur(10px); }}
     </style>
 """, unsafe_allow_html=True)
@@ -220,7 +213,7 @@ with t1:
         st.write("")
         display_safe_image("desmoines")
 
-# --- ZAKŁADKA 2: ZADANIA ---
+# --- ZAKŁADKA 2: ZADANIA (KARTY ZAMIAST TABELI) ---
 with t2:
     st.markdown("### ✅ Pre-Departure Checklist")
     try:
@@ -231,38 +224,117 @@ with t2:
         st.progress(done/total if total > 0 else 0, text=f"Ukończono: {done}/{total}")
         st.write("")
         
-        ed_z = st.data_editor(
-            df_z, 
-            column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, 
-            use_container_width=True, 
-            hide_index=True, 
-            num_rows="dynamic"
-        )
-        if st.button("Zapisz Zadania"):
-            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=ed_z)
-            st.toast("Zapisano zadania!")
+        # Renderowanie dynamicznych kart zadań
+        for i, r in df_z.iterrows():
+            c1, c2, c3 = st.columns([4, 1, 1])
+            is_done = r['Status']
+            
+            # Zmiana stylu karty, jeśli zadanie jest wykonane
+            bg_color = "rgba(40, 167, 69, 0.1)" if is_done else "rgba(255,255,255,0.95)"
+            border_color = "#28a745" if is_done else "#0B2447"
+            strike = "text-decoration: line-through; opacity: 0.6;" if is_done else ""
+            icon = "✅" if is_done else "📝"
+            
+            html_task = f"<div style='background: {bg_color}; border-left: 5px solid {border_color}; border-radius: 8px; padding: 12px 15px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); {strike}'><span style='font-weight:600;'>{icon} {r['Zadanie']}</span></div>"
+            c1.markdown(html_task.replace('\n', ''), unsafe_allow_html=True)
+            
+            tag_html = f"<div style='margin-top:12px;'><span class='route-tag'>{r['Kategoria']}</span></div>"
+            c2.markdown(tag_html.replace('\n', ''), unsafe_allow_html=True)
+            
+            # Przyciski akcji
+            with c3:
+                st.write("") # Margines z góry
+                if is_done:
+                    if st.button("COFNIJ", key=f"z_{i}"):
+                        df_z.at[i, "Status"] = False
+                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=df_z)
+                        st.rerun()
+                else:
+                    if st.button("ZROBIONE!", type="primary", key=f"z_{i}"):
+                        df_z.at[i, "Status"] = True
+                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=df_z)
+                        st.rerun()
+
+        st.write("")
+        with st.expander("⚙️ Tryb Edycji i Dodawania Zadań (Admin)"):
+            ed_z = st.data_editor(
+                df_z, 
+                column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, 
+                use_container_width=True, 
+                hide_index=True, 
+                num_rows="dynamic"
+            )
+            if st.button("Zapisz Edycję Zadań"):
+                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=ed_z)
+                st.toast("Zapisano zmiany w bazie!")
+                st.rerun()
+                
     except Exception as e: 
         st.error(f"Błąd bazy danych (Zadania): {e}")
 
-# --- ZAKŁADKA 3: BAGAŻE ---
+# --- ZAKŁADKA 3: BAGAŻE (KARTY ZAMIAST TABELI) ---
 with t3:
     st.markdown("### 🧳 Cargo Manifest")
     try:
         df_b = load_data("Bagaz")
         df_b["Spakowane"] = df_b["Spakowane"].astype(str).str.upper() == "TRUE"
-        who = st.multiselect("Pokaż bagaż osoby:", options=df_b["Wlasciciel"].unique(), default=df_b["Wlasciciel"].unique())
         
-        ed_b = st.data_editor(
-            df_b[df_b["Wlasciciel"].isin(who)], 
-            column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, 
-            use_container_width=True, 
-            hide_index=True, 
-            num_rows="dynamic"
-        )
-        if st.button("Zapisz Bagaż"):
-            df_b.update(ed_b)
-            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_b)
-            st.toast("Zaktualizowano bagaż!")
+        # Filtrowanie osób
+        who = st.multiselect("Pokaż bagaż osoby:", options=df_b["Wlasciciel"].unique(), default=df_b["Wlasciciel"].unique())
+        filtered_df = df_b[df_b["Wlasciciel"].isin(who)]
+        
+        # Pasek postępu pakowania dla wybranych osób
+        done_b = filtered_df["Spakowane"].sum()
+        total_b = len(filtered_df)
+        if total_b > 0:
+            st.progress(done_b/total_b, text=f"Spakowano: {done_b}/{total_b} rzeczy")
+            st.write("")
+
+        # Renderowanie dynamicznych kart bagażu
+        for i, r in filtered_df.iterrows():
+            c1, c2, c3 = st.columns([4, 1, 1])
+            is_packed = r['Spakowane']
+            
+            bg_color = "rgba(40, 167, 69, 0.1)" if is_packed else "rgba(255,255,255,0.95)"
+            border_color = "#28a745" if is_packed else "#0B2447"
+            strike = "text-decoration: line-through; opacity: 0.6;" if is_packed else ""
+            icon = "🎒" if is_packed else "📦"
+            
+            html_cargo = f"<div style='background: {bg_color}; border-left: 5px solid {border_color}; border-radius: 8px; padding: 12px 15px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); {strike}'><span style='font-weight:600;'>{icon} {r['Przedmiot']}</span></div>"
+            c1.markdown(html_cargo.replace('\n', ''), unsafe_allow_html=True)
+            
+            # Właściciel jako tag, granatowy kolor
+            tag_html = f"<div style='margin-top:12px;'><span style='background: #0B2447; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;'>{r['Wlasciciel']}</span></div>"
+            c2.markdown(tag_html.replace('\n', ''), unsafe_allow_html=True)
+            
+            # Przyciski akcji
+            with c3:
+                st.write("") # Margines z góry
+                if is_packed:
+                    if st.button("WYPAKUJ", key=f"b_{i}"):
+                        df_b.at[i, "Spakowane"] = False # Aktualizujemy główny dataframe, nie przefiltrowany!
+                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_b)
+                        st.rerun()
+                else:
+                    if st.button("DO WALIZKI", type="primary", key=f"b_{i}"):
+                        df_b.at[i, "Spakowane"] = True
+                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_b)
+                        st.rerun()
+        
+        st.write("")
+        with st.expander("⚙️ Tryb Edycji i Dodawania Bagażu (Admin)"):
+            ed_b = st.data_editor(
+                df_b, 
+                column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, 
+                use_container_width=True, 
+                hide_index=True, 
+                num_rows="dynamic"
+            )
+            if st.button("Zapisz Edycję Bagażu"):
+                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=ed_b)
+                st.toast("Zapisano zmiany w bazie!")
+                st.rerun()
+                
     except Exception as e: 
         st.error(f"Błąd bazy danych (Bagaż): {e}")
 
@@ -284,14 +356,15 @@ with t4:
             c1.markdown(html_mission.replace('\n', ''), unsafe_allow_html=True)
             c2.markdown(f"<div style='padding: 10px; font-weight: 800; color: #0B2447;'>+{r['Punkty_do_zdobycia']} 💎</div>", unsafe_allow_html=True)
             
-            if r["Zaliczone"]: 
-                c3.markdown("<div style='padding: 10px; color: green; font-weight: 800;'>✅ ZALICZONE</div>", unsafe_allow_html=True)
-            else:
-                if c3.button("ZROBIONE!", key=f"g_{i}"):
-                    st.balloons()
-                    df_g.at[i, "Zaliczone"] = True
-                    conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=df_g)
-                    st.rerun()
+            with c3:
+                if r["Zaliczone"]: 
+                    st.markdown("<div style='padding: 10px; color: green; font-weight: 800;'>✅ ZALICZONE</div>", unsafe_allow_html=True)
+                else:
+                    if st.button("ZROBIONE!", type="primary", key=f"g_{i}"):
+                        st.balloons()
+                        df_g.at[i, "Zaliczone"] = True
+                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=df_g)
+                        st.rerun()
                 
         st.write("")
         with st.expander("⚙️ Tryb Rodzica (Edycja i dodawanie misji)"):

@@ -5,7 +5,7 @@ import datetime
 import os
 from PIL import Image, ImageFile
 
-# Zabezpieczenie plików graficznych
+# Zabezpieczenie przed "uciętymi" plikami graficznymi (częsty problem przy uploadzie na GitHub)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # --- 1. KONFIGURACJA STRONY ---
@@ -16,9 +16,32 @@ st.set_page_config(
     initial_sidebar_state="expanded" 
 )
 
+# --- FUNKCJA POMOCNICZA: BEZPIECZNE ŁADOWANIE OBRAZÓW ---
+def display_safe_image(filename_base, caption=""):
+    """
+    Funkcja szuka pliku graficznego (png/jpg), bezpiecznie go ładuje
+    i zapobiega wywaleniu aplikacji, jeśli plik jest uszkodzony.
+    """
+    extensions = ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']
+    for ext in extensions:
+        file_path = f"{filename_base}{ext}"
+        if os.path.exists(file_path):
+            try:
+                img = Image.open(file_path)
+                img.load() # Wymusza wczytanie danych, by sprawdzić błędy struktury
+                st.image(img, caption=caption, use_container_width=True)
+                return
+            except Exception as e:
+                st.error(f"⚠️ Plik {file_path} jest uszkodzony. Wgraj go ponownie na GitHuba.")
+                return
+    
+    # Jeśli pętla się zakończy i nie znajdzie pliku:
+    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' do repozytorium, aby go tutaj wyświetlić.")
+
 # --- 2. ZAAWANSOWANY CSS (MOTYW BOARDING PASS + USA-MAX) ---
 st.markdown("""
     <style>
+    /* Całkowite ukrycie technicznego UI Streamlita */
     header[data-testid="stHeader"] { visibility: hidden; }
     div[data-testid="stHeader"] { visibility: hidden; }
     footer { visibility: hidden; }
@@ -68,7 +91,7 @@ st.markdown("""
         right: -12px;
         width: 20px;
         height: 20px;
-        background-color: #f8f9fa; /* Kolor tła aplikacji */
+        background-color: #f8f9fa;
         border-radius: 50%;
         border-left: 1px solid #e2e8f0;
         z-index: 10;
@@ -173,7 +196,7 @@ st.markdown("""
         line-height: 0.8;
     }
 
-    /* --- RESZTA STYLIZACJI (Zakładki, przyciski, karty) --- */
+    /* --- RESZTA STYLIZACJI (Zakładki, przyciski, tabele, karty) --- */
     .stTabs [data-baseweb="tab-list"] {
         background-color: rgba(255, 255, 255, 0.7);
         border-radius: 12px;
@@ -204,6 +227,13 @@ st.markdown("""
         font-weight: 800 !important;
         box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3) !important;
         text-transform: uppercase;
+    }
+    div[data-testid="stDataFrame"] {
+        background-color: rgba(255, 255, 255, 0.9) !important;
+        border-radius: 16px !important;
+        overflow: hidden !important;
+        border: 2px solid #e2e8f0 !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important;
     }
     .route-card {
         background-color: white;
@@ -256,7 +286,6 @@ data_wyjazdu = datetime.datetime(2026, 6, 30, 8, 0)
 teraz = datetime.datetime.now()
 roznica = data_wyjazdu - teraz
 dni = roznica.days
-godziny = roznica.seconds // 3600
 
 # --- 5. BOARDING PASS HERO SECTION ---
 st.markdown(f"""
@@ -322,15 +351,8 @@ tab_plan, tab_zadania, tab_bagaz, tab_dzieci = st.tabs([
 with tab_plan:
     st.markdown("<h3 style='color: #0f2027;'>🗺️ Trasa: Poznań ➡️ Chicago ➡️ Des Moines</h3>", unsafe_allow_html=True)
     
-    # SEKCJA MAPY NA SAMEJ GÓRZE ZAKŁADKI
-    try:
-        if os.path.exists("mapa.png"):
-            img = Image.open("mapa.png")
-            st.image(img, caption="Strategiczna Mapa Operacji", use_container_width=True)
-        else:
-            st.info("💡 Wgraj plik 'mapa.png' do głównego folderu na GitHub, aby wyświetlić tutaj mapę trasy.")
-    except Exception as e:
-        st.error("⚠️ Plik mapa.png jest uszkodzony.")
+    # Wyświetlanie głównej mapy przy pomocy bezpiecznej funkcji
+    display_safe_image("mapa", "Strategiczna Mapa Operacji")
 
     st.divider()
 
@@ -341,7 +363,7 @@ with tab_plan:
         try:
             df_plan = load_data("Plan")
             
-            # Karty Timeline
+            # Renderowanie estetycznych kart HTML
             for index, row in df_plan.iterrows():
                 st.markdown(f"""
                 <div class="route-card">
@@ -353,7 +375,7 @@ with tab_plan:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Panel Edycji (ukryty)
+            # Panel Edycji (ukryty dla czystości)
             with st.expander("⚙️ Tryb Edycji Harmonogramu"):
                 edited_plan = st.data_editor(df_plan, use_container_width=True, hide_index=True, num_rows="dynamic")
                 if st.button("Zapisz Harmonogram", key="save_plan"):
@@ -366,17 +388,10 @@ with tab_plan:
 
     with col_features:
         st.markdown("<h4 style='color: #0f2027;'>Punkty Orientacyjne</h4>", unsafe_allow_html=True)
-        # ZDJĘCIE CHICAGO
-        try:
-            if os.path.exists("chicago.png"): st.image(Image.open("chicago.png"), use_container_width=True)
-            elif os.path.exists("chicago.jpg"): st.image(Image.open("chicago.jpg"), use_container_width=True)
-        except: pass
-        
-        # ZDJĘCIE DES MOINES
-        try:
-            if os.path.exists("desmoines.png"): st.image(Image.open("desmoines.png"), use_container_width=True)
-            elif os.path.exists("desmoines.jpg"): st.image(Image.open("desmoines.jpg"), use_container_width=True)
-        except: pass
+        # Bezpieczne wyświetlanie dodatkowych grafik
+        display_safe_image("chicago")
+        st.write("") # Odstęp
+        display_safe_image("desmoines")
 
 
 # --- ZAKŁADKA 2: ZADANIA ---
@@ -409,6 +424,7 @@ with tab_zadania:
     except Exception as e:
         st.error(f"Błąd połączenia: {e}")
 
+
 # --- ZAKŁADKA 3: PAKOWANIE ---
 with tab_bagaz:
     st.markdown("<h3 style='color: #0f2027;'>Bagaż Family Cargo Manifest</h3>", unsafe_allow_html=True)
@@ -437,6 +453,7 @@ with tab_bagaz:
             st.toast("Zapisano stan walizek!", icon="🎒")
     except Exception as e:
         st.error(f"Błąd połączenia: {e}")
+
 
 # --- ZAKŁADKA 4: STREFA DZIECI ---
 with tab_dzieci:
@@ -482,6 +499,7 @@ with tab_dzieci:
             
     except Exception as e:
         st.error(f"Błąd: {e}")
+
 
 # --- SIDEBAR ---
 st.sidebar.markdown("### 👨‍👩‍👧‍👧 ZAŁOGA MISJI:")

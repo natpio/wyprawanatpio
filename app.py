@@ -5,7 +5,7 @@ import datetime
 import os
 from PIL import Image, ImageFile
 
-# Zabezpieczenie przed "uciętymi" plikami graficznymi przy uploadzie
+# Zabezpieczenie przed "uciętymi" plikami graficznymi przy uploadzie na GitHub
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # --- 1. KONFIGURACJA STRONY ---
@@ -29,7 +29,7 @@ def display_safe_image(filename_base, caption=""):
                 st.image(img, caption=caption, use_container_width=True)
                 return
             except Exception:
-                st.error(f"⚠️ Plik {file_path} jest uszkodzony. Wgraj go ponownie.")
+                st.error(f"⚠️ Plik {file_path} jest uszkodzony. Wgraj go ponownie na GitHuba.")
                 return
     st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' do repozytorium na GitHub.")
 
@@ -78,12 +78,24 @@ st.markdown("""
     .route-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 6px solid #C62828; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; align-items: center; }
     .route-date { font-family: 'Anton'; font-size: 1.5rem; color: #0B2447; min-width: 110px; text-align: center; border-right: 2px dashed #e2e8f0; padding-right: 15px; margin-right: 15px; }
     .route-tag { display: inline-block; background: #FFC72C; color: #0B2447; font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 5px; }
+    
+    /* --- TABELE I ZAKŁADKI --- */
+    .stTabs [data-baseweb="tab-list"] { background-color: rgba(255, 255, 255, 0.7); border-radius: 12px; padding: 6px; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
+    .stTabs [data-baseweb="tab"] { border-radius: 8px !important; padding: 10px 20px !important; border: none !important; font-weight: 800 !important; color: #64748b; transition: all 0.2s ease; text-transform: uppercase; }
+    .stTabs [aria-selected="true"] { background-color: #0B2447 !important; color: #FFC72C !important; box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important; }
+    .stButton>button { background-color: #C62828 !important; color: white !important; border-radius: 10px !important; border: none !important; padding: 10px 20px !important; font-weight: 800 !important; box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3) !important; text-transform: uppercase; }
+    div[data-testid="stDataFrame"] { background-color: rgba(255, 255, 255, 0.9) !important; border-radius: 16px !important; overflow: hidden !important; border: 2px solid #e2e8f0 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important; }
     </style>
 """, unsafe_allow_html=True)
 
 # --- 3. POŁĄCZENIE Z BAZĄ ---
 SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1SVabwrxRpf2Q7dAdRIR3xC9HCQs2sFMI4Z3dAn9HArY"
-conn = st.connection("gsheets", type=GSheetsConnection)
+
+@st.cache_resource
+def get_connection():
+    return st.connection("gsheets", type=GSheetsConnection)
+
+conn = get_connection()
 
 def load_data(sheet_name):
     return conn.read(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name, ttl=0)
@@ -93,8 +105,8 @@ target_date = datetime.datetime(2026, 6, 30, 8, 0)
 days_left = (target_date - datetime.datetime.now()).days
 
 # --- 5. BILET (BOARDING PASS) ---
-# Używamy potrójnego cudzysłowu, ale NA KOŃCU usuwamy znaki nowej linii (replace),
-# co gwarantuje 100% ochronę przed zamianą HTML w blok kodu przez Streamlit.
+# UWAGA: Ten kod HTML musi być całkowicie pozbawiony znaków nowej linii (enterów), 
+# aby Streamlit nie potraktował go jako kodu źródłowego. 
 html_ticket = f"""
 <div class="boarding-pass-wrapper">
     <div class="ticket">
@@ -144,7 +156,7 @@ html_ticket = f"""
     </div>
 </div>
 """
-# TA LINIJKA JEST KLUCZOWA - USUWA NOWE LINIE CHRONIĄC PRZED BŁĘDEM
+# Metoda replace('\n', '') usuwa wszystkie entery z powyższego HTMLa.
 st.markdown(html_ticket.replace('\n', ''), unsafe_allow_html=True)
 
 # --- 6. ZAKŁADKI ---
@@ -155,6 +167,7 @@ with t1:
     st.markdown("### 🗺️ Trasa: Poznań ➡️ Chicago ➡️ Des Moines")
     display_safe_image("mapa")
     st.divider()
+    
     c_left, c_right = st.columns([2, 1])
     with c_left:
         st.markdown("#### Harmonogram")
@@ -169,8 +182,11 @@ with t1:
                 ed_p = st.data_editor(df_p, use_container_width=True, hide_index=True, num_rows="dynamic")
                 if st.button("Zapisz Roadmap"):
                     conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Plan", data=ed_p)
+                    st.toast("Zapisano Harmonogram!", icon="✅")
                     st.rerun()
-        except Exception as e: st.error(f"Błąd bazy: {e}")
+        except Exception as e: 
+            st.error(f"Błąd bazy danych (Plan): {e}")
+
     with c_right:
         st.markdown("#### Punkty Orientacyjne")
         display_safe_image("chicago")
@@ -188,11 +204,18 @@ with t2:
         st.progress(done/total if total > 0 else 0, text=f"Ukończono: {done}/{total}")
         st.write("")
         
-        ed_z = st.data_editor(df_z, column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, use_container_width=True, hide_index=True, num_rows="dynamic")
+        ed_z = st.data_editor(
+            df_z, 
+            column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, 
+            use_container_width=True, 
+            hide_index=True, 
+            num_rows="dynamic"
+        )
         if st.button("Zapisz Zadania"):
             conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=ed_z)
-            st.toast("Zapisano!")
-    except Exception as e: st.error(f"Błąd: {e}")
+            st.toast("Zapisano zadania!")
+    except Exception as e: 
+        st.error(f"Błąd bazy danych (Zadania): {e}")
 
 # --- ZAKŁADKA 3: BAGAŻE ---
 with t3:
@@ -200,14 +223,21 @@ with t3:
     try:
         df_b = load_data("Bagaz")
         df_b["Spakowane"] = df_b["Spakowane"].astype(str).str.upper() == "TRUE"
-        who = st.multiselect("Pokaż bagaż:", options=df_b["Wlasciciel"].unique(), default=df_b["Wlasciciel"].unique())
+        who = st.multiselect("Pokaż bagaż osoby:", options=df_b["Wlasciciel"].unique(), default=df_b["Wlasciciel"].unique())
         
-        ed_b = st.data_editor(df_b[df_b["Wlasciciel"].isin(who)], column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, use_container_width=True, hide_index=True, num_rows="dynamic")
+        ed_b = st.data_editor(
+            df_b[df_b["Wlasciciel"].isin(who)], 
+            column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, 
+            use_container_width=True, 
+            hide_index=True, 
+            num_rows="dynamic"
+        )
         if st.button("Zapisz Bagaż"):
             df_b.update(ed_b)
             conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_b)
-            st.toast("Zaktualizowano!")
-    except Exception as e: st.error(f"Błąd: {e}")
+            st.toast("Zaktualizowano bagaż!")
+    except Exception as e: 
+        st.error(f"Błąd bazy danych (Bagaż): {e}")
 
 # --- ZAKŁADKA 4: DZIECI ---
 with t4:
@@ -223,25 +253,32 @@ with t4:
         
         for i, r in df_g.iterrows():
             c1, c2, c3 = st.columns([3, 1, 1])
-            # Poprawione formatowanie w Kids Hub
             html_mission = f"<div style='background-color: white; border-left: 4px solid #FFC72C; border-radius: 8px; padding: 10px 15px; margin-bottom: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'>⭐️ <strong>{r['Etap']}</strong></div>"
             c1.markdown(html_mission.replace('\n', ''), unsafe_allow_html=True)
             c2.markdown(f"<div style='padding: 10px; font-weight: 800; color: #0B2447;'>+{r['Punkty_do_zdobycia']} 💎</div>", unsafe_allow_html=True)
             
             if r["Zaliczone"]: 
                 c3.markdown("<div style='padding: 10px; color: green; font-weight: 800;'>✅ ZALICZONE</div>", unsafe_allow_html=True)
-            elif c3.button("ZROBIONE!", key=f"g_{i}"):
-                st.balloons()
-                df_g.at[i, "Zaliczone"] = True
-                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=df_g)
-                st.rerun()
+            else:
+                if c3.button("ZROBIONE!", key=f"g_{i}"):
+                    st.balloons()
+                    df_g.at[i, "Zaliczone"] = True
+                    conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=df_g)
+                    st.rerun()
                 
         st.write("")
         with st.expander("⚙️ Tryb Rodzica (Edycja i dodawanie misji)"):
-            ed_g = st.data_editor(df_g, column_config={"Zaliczone": st.column_config.CheckboxColumn("Zaliczone?", default=False)}, use_container_width=True, hide_index=True, num_rows="dynamic")
+            ed_g = st.data_editor(
+                df_g, 
+                column_config={"Zaliczone": st.column_config.CheckboxColumn("Zaliczone?", default=False)}, 
+                use_container_width=True, 
+                hide_index=True, 
+                num_rows="dynamic"
+            )
             if st.button("Zapisz zasady gry"):
                 conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=ed_g)
                 st.toast("Zaktualizowano misje!")
                 st.rerun()
                 
-    except Exception as e: st.error(f"Błąd: {e}")
+    except Exception as e: 
+        st.error(f"Błąd bazy danych (Grywalizacja): {e}")

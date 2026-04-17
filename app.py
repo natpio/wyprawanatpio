@@ -1,26 +1,29 @@
 import streamlit as st
 import datetime
-from data import init_state, save_and_sync, safe_rerun, display_safe_image, get_weather
-from ui import apply_custom_css, render_boarding_pass, jetlag_widget, render_customs_card
+
+# --- POPRAWNE IMPORTY Z PLIKU DATA.PY ---
+from data import init_state, save_and_sync, safe_rerun, get_weather
+
+# --- POPRAWNE IMPORTY Z PLIKU UI.PY ---
+from ui import apply_custom_css, render_boarding_pass, jetlag_widget, render_customs_card, display_safe_image
 
 st.set_page_config(page_title="IOWA '26 | OPERATION HUB 🇺🇸", page_icon="✈️", layout="wide", initial_sidebar_state="collapsed")
 
-# Inicjalizacja CSS i Bazy Danych
+# --- START APLIKACJI ---
 apply_custom_css()
 init_state("Plan")
-init_state("Zadania", ["Status"])
-init_state("Bagaz", ["Spakowane"])
-init_state("Grywalizacja", ["Zaliczone"])
+init_state("Zadania")
+init_state("Bagaz")
+init_state("Grywalizacja")
 
-# Opcja odświeżania bazy
+# Opcja ręcznego odświeżania chmury
 _, col_sync = st.columns([8, 2])
-if col_sync.button("🔄 Wymuś Odświeżenie Chmury", width="stretch"):
+if col_sync.button("🔄 Wymuś Odświeżenie Chmury", use_container_width=True):
     st.cache_data.clear()
     for key in list(st.session_state.keys()):
         if key.startswith("df_"): del st.session_state[key]
     safe_rerun()
 
-# Bilet Lotniczy na samej górze
 target_date = datetime.datetime(2026, 6, 30, 8, 0)
 render_boarding_pass((target_date - datetime.datetime.now()).days)
 
@@ -28,7 +31,6 @@ if st.session_state.get("show_balloons", False):
     st.balloons()
     st.session_state["show_balloons"] = False
 
-# Główne Zakładki
 t1, t2, t3, t4, t5 = st.tabs(["📍 Roadmap", "✅ Checklist", "🧳 Cargo", "🎮 Kids Hub", "🛂 Odprawa"])
 
 # --- ZAKŁADKA 1: ROADMAP ---
@@ -48,7 +50,7 @@ with t1:
                 card = f"""<div class="route-card"><div class="route-date">{r['Dzien']}</div><div style="width: 100%;"><div class="route-tag">{r['Etap']}</div><p style="margin:0; font-weight:600;">{r['Opis']}</p></div></div>"""
                 st.markdown(card.replace('\n', ''), unsafe_allow_html=True)
             with st.expander("⚙️ Tryb Edycji"):
-                ed_p = st.data_editor(df_p, width="stretch", hide_index=True, num_rows="dynamic")
+                ed_p = st.data_editor(df_p, use_container_width=True, hide_index=True, num_rows="dynamic")
                 if st.button("Zapisz Roadmap"):
                     st.session_state["df_Plan"] = ed_p
                     if save_and_sync("Plan"): safe_rerun()
@@ -64,7 +66,6 @@ with t2:
         done, total = df_z["Status"].sum(), len(df_z)
         st.progress(done/total if total > 0 else 0, text=f"Ukończono: {done}/{total}")
         
-        # Filtrowanie danych
         df_todo = df_z[~df_z['Status']]
         df_done = df_z[df_z['Status']]
         
@@ -83,7 +84,6 @@ with t2:
                         if save_and_sync("Zadania"): safe_rerun()
 
         st.write("")
-        # Archiwum
         with st.expander(f"🗃️ Archiwum Ukończonych Zadań ({len(df_done)})"):
             for i, r in df_done.iterrows():
                 c1, c2 = st.columns([3, 1])
@@ -96,7 +96,7 @@ with t2:
                         if save_and_sync("Zadania"): safe_rerun()
 
         with st.expander("⚙️ Admin Zadań"):
-            ed_z = st.data_editor(df_z, column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic", width="stretch")
+            ed_z = st.data_editor(df_z, column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic", use_container_width=True)
             if st.button("Zapisz Edycję Zadań"): 
                 st.session_state["df_Zadania"] = ed_z
                 if save_and_sync("Zadania"): safe_rerun()
@@ -111,7 +111,6 @@ with t3:
         if not filtered.empty: 
             st.progress(filtered["Spakowane"].sum()/len(filtered), text=f"Spakowano: {filtered['Spakowane'].sum()}/{len(filtered)}")
             
-            # Filtrowanie na Spakowane i Do Spakowania
             df_to_pack = filtered[~filtered['Spakowane']]
             df_packed = filtered[filtered['Spakowane']]
             
@@ -130,7 +129,6 @@ with t3:
                             if save_and_sync("Bagaz"): safe_rerun()
 
             st.write("")
-            # Archiwum spakowanych
             with st.expander(f"🎒 Spakowane ({len(df_packed)})"):
                 for i, r in df_packed.iterrows():
                     c1, c2 = st.columns([3, 1])
@@ -143,7 +141,7 @@ with t3:
                             if save_and_sync("Bagaz"): safe_rerun()
 
         with st.expander("⚙️ Admin Bagażu"):
-            ed_b = st.data_editor(df_b, column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic", width="stretch")
+            ed_b = st.data_editor(df_b, column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic", use_container_width=True)
             if st.button("Zapisz Edycję Bagażu"): 
                 st.session_state["df_Bagaz"] = ed_b
                 if save_and_sync("Bagaz"): safe_rerun()
@@ -173,7 +171,6 @@ with t4:
                         if save_and_sync("Grywalizacja"): safe_rerun()
 
         st.write("")
-        # Archiwum misji
         with st.expander(f"🏆 Zdobyte Trofea ({len(df_g_done)})"):
             for i, r in df_g_done.iterrows():
                 c1, c2 = st.columns([3, 1])
@@ -184,7 +181,7 @@ with t4:
                         if save_and_sync("Grywalizacja"): safe_rerun()
 
         with st.expander("⚙️ Admin Gry"):
-            ed_g = st.data_editor(df_g, column_config={"Zaliczone": st.column_config.CheckboxColumn("Zaliczone?", default=False)}, hide_index=True, num_rows="dynamic", width="stretch")
+            ed_g = st.data_editor(df_g, column_config={"Zaliczone": st.column_config.CheckboxColumn("Zaliczone?", default=False)}, hide_index=True, num_rows="dynamic", use_container_width=True)
             if st.button("Zapisz Edycję Gry"): 
                 st.session_state["df_Grywalizacja"] = ed_g
                 if save_and_sync("Grywalizacja"): safe_rerun()

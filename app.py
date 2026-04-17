@@ -3,9 +3,10 @@ from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import datetime
 import os
+import base64
 from PIL import Image, ImageFile
 
-# Zabezpieczenie przed "uciętymi" plikami graficznymi
+# Zabezpieczenie przed "uciętymi" plikami graficznymi (częsty problem przy uploadzie na GitHub)
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # --- 1. KONFIGURACJA STRONY ---
@@ -16,8 +17,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- FUNKCJA POMOCNICZA: BEZPIECZNE ŁADOWANIE OBRAZÓW ---
+# --- FUNKCJE POMOCNICZE (BASE64 I OBRAZY) ---
+def get_base64_of_bin_file(bin_file):
+    """Zmienia plik na format Base64 (potrzebne do tła w CSS)"""
+    try:
+        with open(bin_file, 'rb') as f:
+            data = f.read()
+        return base64.b64encode(data).decode()
+    except Exception:
+        return None
+
 def display_safe_image(filename_base, caption=""):
+    """Szuka pliku graficznego, ładuje go bezpiecznie i wyświetla."""
     extensions = ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']
     for ext in extensions:
         file_path = f"{filename_base}{ext}"
@@ -30,90 +41,97 @@ def display_safe_image(filename_base, caption=""):
             except Exception:
                 st.error(f"⚠️ Plik {file_path} jest uszkodzony. Wgraj go ponownie na GitHuba.")
                 return
-    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' do repozytorium na GitHub.")
+    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' lub '.jpg' do repozytorium.")
 
-# --- 2. ZAAWANSOWANY CSS (Z RESPONSYWNOŚCIĄ NA TELEFONY) ---
-st.markdown("""
-    <style>
-    /* Ukrycie UI Streamlita */
-    header[data-testid="stHeader"] { visibility: hidden; }
-    footer { visibility: hidden; }
-    #MainMenu { visibility: hidden; }
-    section[data-testid="stSidebar"] { display: none; }
+# --- 2. ZAAWANSOWANY CSS Z DYNAMICZNYM TŁEM (I RESPONSYWNOŚCIĄ) ---
+mapa_b64 = get_base64_of_bin_file("mapa.png")
+if not mapa_b64:
+    mapa_b64 = get_base64_of_bin_file("mapa.jpg")
 
-    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Open+Sans:wght@400;600;800&family=Libre+Barcode+39+Text&display=swap');
-
+if mapa_b64:
+    bg_css = f"""
+    .stApp {{
+        background-image: linear-gradient(rgba(248, 249, 250, 0.88), rgba(248, 249, 250, 0.88)), url("data:image/png;base64,{mapa_b64}");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+        font-family: 'Open Sans', sans-serif !important;
+    }}
+    """
+else:
+    bg_css = """
     .stApp {
         background-color: #f8f9fa;
-        background-image: linear-gradient(135deg, rgba(244, 0, 0, 0.05) 0%, rgba(255, 199, 44, 0.05) 100%),
-                          radial-gradient(#d3dce6 1px, transparent 1px);
+        background-image: linear-gradient(135deg, rgba(244, 0, 0, 0.05) 0%, rgba(255, 199, 44, 0.05) 100%), radial-gradient(#d3dce6 1px, transparent 1px);
         background-size: 100% 100%, 20px 20px;
         background-attachment: fixed;
         font-family: 'Open Sans', sans-serif !important;
     }
+    """
+
+st.markdown(f"""
+    <style>
+    /* Ukrycie UI Streamlita */
+    header[data-testid="stHeader"] {{ visibility: hidden; }}
+    footer {{ visibility: hidden; }}
+    #MainMenu {{ visibility: hidden; }}
+    section[data-testid="stSidebar"] {{ display: none; }}
+
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Open+Sans:wght@400;600;800&family=Libre+Barcode+39+Text&display=swap');
+
+    {bg_css}
 
     /* --- BOARDING PASS UI --- */
-    .boarding-pass-wrapper { display: flex; justify-content: center; margin-top: -20px; margin-bottom: 40px; }
-    .ticket { display: flex; background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.15); overflow: hidden; width: 100%; max-width: 1100px; border: 1px solid #e2e8f0; }
-    .ticket-left { flex: 3; border-right: 3px dashed #cbd5e1; position: relative; padding-bottom: 20px; }
-    .ticket-left::after, .ticket-left::before { content: ''; position: absolute; right: -12px; width: 20px; height: 20px; background-color: #f8f9fa; border-radius: 50%; z-index: 10; }
-    .ticket-left::before { top: -10px; } .ticket-left::after { bottom: -10px; }
-    .ticket-header { background-color: #0B2447; color: #FFC72C; padding: 15px 25px; font-family: 'Anton'; font-size: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
-    .flight-class { font-family: 'Open Sans'; font-size: 0.8rem; background: #C62828; color: white; padding: 4px 12px; border-radius: 20px; }
-    .ticket-body { padding: 25px; display: flex; flex-direction: column; gap: 15px; }
-    .ticket-row { display: flex; justify-content: space-between; align-items: center; }
-    .ticket-field { display: flex; flex-direction: column; }
-    .ticket-field small { color: #64748b; font-size: 0.7rem; text-transform: uppercase; font-weight: 800; }
-    .ticket-field strong { color: #0f2027; font-size: 1.1rem; font-weight: 800; }
-    .ticket-airport { font-family: 'Anton'; font-size: 2.5rem; color: #C62828; line-height: 1; display: flex; align-items: baseline; gap: 8px; }
-    .ticket-airport span { font-family: 'Open Sans'; font-size: 0.9rem; color: #0B2447; }
-    .ticket-right { flex: 1; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; min-width: 200px; }
-    .countdown-num { font-family: 'Anton'; font-size: 4rem; color: #0B2447; margin-bottom: -10px; }
-    .countdown-lbl { color: #C62828; font-weight: 800; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 10px; }
-    .ticket-barcode { font-family: 'Libre Barcode 39 Text'; font-size: 3rem; color: #334155; }
+    .boarding-pass-wrapper {{ display: flex; justify-content: center; margin-top: 10px; margin-bottom: 40px; }}
+    .ticket {{ display: flex; background: white; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.15); overflow: hidden; width: 100%; max-width: 1100px; border: 1px solid #e2e8f0; }}
+    .ticket-left {{ flex: 3; border-right: 3px dashed #cbd5e1; position: relative; padding-bottom: 20px; }}
+    .ticket-left::after, .ticket-left::before {{ content: ''; position: absolute; right: -12px; width: 20px; height: 20px; background-color: #f8f9fa; border-radius: 50%; z-index: 10; }}
+    .ticket-left::before {{ top: -10px; }} .ticket-left::after {{ bottom: -10px; }}
+    .ticket-header {{ background-color: #0B2447; color: #FFC72C; padding: 15px 25px; font-family: 'Anton'; font-size: 1.5rem; display: flex; justify-content: space-between; align-items: center; }}
+    .flight-class {{ font-family: 'Open Sans'; font-size: 0.8rem; background: #C62828; color: white; padding: 4px 12px; border-radius: 20px; }}
+    .ticket-body {{ padding: 25px; display: flex; flex-direction: column; gap: 15px; }}
+    .ticket-row {{ display: flex; justify-content: space-between; align-items: center; }}
+    .ticket-field {{ display: flex; flex-direction: column; }}
+    .ticket-field small {{ color: #64748b; font-size: 0.7rem; text-transform: uppercase; font-weight: 800; }}
+    .ticket-field strong {{ color: #0f2027; font-size: 1.1rem; font-weight: 800; }}
+    .ticket-airport {{ font-family: 'Anton'; font-size: 2.5rem; color: #C62828; line-height: 1; display: flex; align-items: baseline; gap: 8px; }}
+    .ticket-airport span {{ font-family: 'Open Sans'; font-size: 0.9rem; color: #0B2447; }}
+    .ticket-right {{ flex: 1; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; min-width: 200px; }}
+    .countdown-num {{ font-family: 'Anton'; font-size: 4rem; color: #0B2447; margin-bottom: -10px; }}
+    .countdown-lbl {{ color: #C62828; font-weight: 800; text-transform: uppercase; font-size: 0.8rem; margin-bottom: 10px; }}
+    .ticket-barcode {{ font-family: 'Libre Barcode 39 Text'; font-size: 3rem; color: #334155; }}
 
     /* --- ROADMAP CARDS --- */
-    .route-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 6px solid #C62828; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; align-items: center; }
-    .route-date { font-family: 'Anton'; font-size: 1.5rem; color: #0B2447; min-width: 110px; text-align: center; border-right: 2px dashed #e2e8f0; padding-right: 15px; margin-right: 15px; }
-    .route-tag { display: inline-block; background: #FFC72C; color: #0B2447; font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 5px; }
+    .route-card {{ background: rgba(255,255,255,0.95); border-radius: 12px; padding: 20px; margin-bottom: 15px; border-left: 6px solid #C62828; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; align-items: center; }}
+    .route-date {{ font-family: 'Anton'; font-size: 1.5rem; color: #0B2447; min-width: 110px; text-align: center; border-right: 2px dashed #e2e8f0; padding-right: 15px; margin-right: 15px; }}
+    .route-tag {{ display: inline-block; background: #FFC72C; color: #0B2447; font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 20px; text-transform: uppercase; margin-bottom: 5px; }}
     
     /* --- TABELE I ZAKŁADKI --- */
-    .stTabs [data-baseweb="tab-list"] { background-color: rgba(255, 255, 255, 0.7); border-radius: 12px; padding: 6px; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); }
-    .stTabs [data-baseweb="tab"] { border-radius: 8px !important; padding: 10px 20px !important; border: none !important; font-weight: 800 !important; color: #64748b; transition: all 0.2s ease; text-transform: uppercase; }
-    .stTabs [aria-selected="true"] { background-color: #0B2447 !important; color: #FFC72C !important; box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important; }
-    .stButton>button { background-color: #C62828 !important; color: white !important; border-radius: 10px !important; border: none !important; padding: 10px 20px !important; font-weight: 800 !important; box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3) !important; text-transform: uppercase; }
-    div[data-testid="stDataFrame"] { background-color: rgba(255, 255, 255, 0.9) !important; border-radius: 16px !important; overflow: hidden !important; border: 2px solid #e2e8f0 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important; }
+    .stTabs [data-baseweb="tab-list"] {{ background-color: rgba(255, 255, 255, 0.8); border-radius: 12px; padding: 6px; gap: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); backdrop-filter: blur(5px); }}
+    .stTabs [data-baseweb="tab"] {{ border-radius: 8px !important; padding: 10px 20px !important; border: none !important; font-weight: 800 !important; color: #64748b; transition: all 0.2s ease; text-transform: uppercase; }}
+    .stTabs [aria-selected="true"] {{ background-color: #0B2447 !important; color: #FFC72C !important; box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important; }}
+    .stButton>button {{ background-color: #C62828 !important; color: white !important; border-radius: 8px !important; border: none !important; padding: 5px 15px !important; font-weight: 800 !important; box-shadow: 0 2px 6px rgba(198, 40, 40, 0.3) !important; text-transform: uppercase; }}
+    div[data-testid="stDataFrame"] {{ background-color: rgba(255, 255, 255, 0.95) !important; border-radius: 16px !important; overflow: hidden !important; border: 2px solid #e2e8f0 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important; backdrop-filter: blur(10px); }}
 
     /* ======================================================== */
     /* 📱 MAGICZNY BLOK DLA TELEFONÓW (RESPONSYWNOŚĆ)           */
     /* ======================================================== */
-    @media (max-width: 768px) {
-        /* Przerabiamy bilet z układu poziomego na pionowy */
-        .ticket { flex-direction: column; }
-        
-        /* Usuwamy boczne wycięcia i linię, dajemy je na dół */
-        .ticket-left { border-right: none; border-bottom: 3px dashed #cbd5e1; padding-bottom: 25px; }
-        .ticket-left::after, .ticket-left::before { display: none; } /* ukrywamy "dziurkacze" dla czystości na mobile */
-        
-        /* Zmniejszamy czcionki, żeby zmieściły się na telefonie */
-        .ticket-header { font-size: 1.1rem; flex-direction: column; gap: 8px; text-align: center; }
-        .ticket-row { flex-direction: column; align-items: flex-start; gap: 10px; }
-        .ticket-row[style*="align-items: center"] { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 5px; }
-        .ticket-airport { font-size: 1.5rem; }
-        .ticket-airport span { font-size: 0.7rem; }
-        
-        /* Prawa strona biletu na dole */
-        .ticket-right { min-width: 100%; padding: 15px; }
-        .countdown-num { font-size: 3rem; margin-bottom: 0px; }
-        .ticket-barcode { font-size: 2.2rem; }
-
-        /* Poprawa układu kart z trasą (Roadmap) */
-        .route-card { flex-direction: column; align-items: flex-start; padding: 15px; }
-        .route-date { border-right: none; border-bottom: 2px dashed #e2e8f0; margin-right: 0; padding-right: 0; margin-bottom: 10px; padding-bottom: 5px; width: 100%; text-align: left; font-size: 1.2rem; }
-        
-        /* Zmniejszenie zakładek w menu */
-        .stTabs [data-baseweb="tab"] { font-size: 0.7rem !important; padding: 8px 10px !important; }
-    }
+    @media (max-width: 768px) {{
+        .ticket {{ flex-direction: column; }}
+        .ticket-left {{ border-right: none; border-bottom: 3px dashed #cbd5e1; padding-bottom: 25px; }}
+        .ticket-left::after, .ticket-left::before {{ display: none; }} 
+        .ticket-header {{ font-size: 1.1rem; flex-direction: column; gap: 8px; text-align: center; }}
+        .ticket-row {{ flex-direction: column; align-items: flex-start; gap: 10px; }}
+        .ticket-row[style*="align-items: center"] {{ flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 5px; }}
+        .ticket-airport {{ font-size: 1.5rem; }}
+        .ticket-airport span {{ font-size: 0.7rem; }}
+        .ticket-right {{ min-width: 100%; padding: 15px; }}
+        .countdown-num {{ font-size: 3rem; margin-bottom: 0px; }}
+        .ticket-barcode {{ font-size: 2.2rem; }}
+        .route-card {{ flex-direction: column; align-items: flex-start; padding: 15px; }}
+        .route-date {{ border-right: none; border-bottom: 2px dashed #e2e8f0; margin-right: 0; padding-right: 0; margin-bottom: 10px; padding-bottom: 5px; width: 100%; text-align: left; font-size: 1.2rem; }}
+        .stTabs [data-baseweb="tab"] {{ font-size: 0.7rem !important; padding: 8px 10px !important; }}
+    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -134,6 +152,7 @@ target_date = datetime.datetime(2026, 6, 30, 8, 0)
 days_left = (target_date - datetime.datetime.now()).days
 
 # --- 5. BILET (BOARDING PASS) ---
+# Zapisane w 100% bezpiecznie (bez znaków nowej linii), aby Streamlit go nie zepsuł
 html_ticket = f"""
 <div class="boarding-pass-wrapper">
     <div class="ticket">
@@ -186,13 +205,11 @@ html_ticket = f"""
 st.markdown(html_ticket.replace('\n', ''), unsafe_allow_html=True)
 
 # --- 6. ZAKŁADKI ---
-t1, t2, t3, t4 = st.tabs(["📍 Roadmap & Map", "✅ Checklist", "🧳 Cargo", "🎮 Kids Hub"])
+t1, t2, t3, t4 = st.tabs(["📍 Roadmap & Info", "✅ Checklist", "🧳 Cargo", "🎮 Kids Hub"])
 
 # --- ZAKŁADKA 1: HARMONOGRAM I INFO ---
 with t1:
     st.markdown("### 🗺️ Trasa: Poznań ➡️ Chicago ➡️ Des Moines")
-    display_safe_image("mapa")
-    st.divider()
     
     c_left, c_right = st.columns([2, 1])
     with c_left:

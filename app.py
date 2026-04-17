@@ -11,7 +11,6 @@ st.set_page_config(
 )
 
 # --- AMERYKAŃSKI STYL CSS (VINTAGE ROAD TRIP VIBE) ---
-# Tło z mapą drogową USA, stylizowane nagłówki i przezroczyste karty
 st.markdown("""
     <style>
     /* Importujemy amerykańskie czcionki z Google Fonts */
@@ -123,17 +122,25 @@ def load_data(sheet_name):
 # --- NAGŁÓWEK I ODLICZANIE ---
 # Główny tytuł w stylu szyldu
 st.markdown("<h1>🗽 MISSION: CHICAGO 2026</h1>", unsafe_allow_html=True)
-st.subheader("🇺🇸 Rodzinne Centrum Dowodzenia | Poznań ➡️ Iowa & Illinois")
 
-data_wyjazdu = datetime.datetime(2026, 6, 30, 8, 0)
-teraz = datetime.datetime.now()
-roznica = data_wyjazdu - teraz
+# Wstawiamy kolumny, aby wkomponować metryki i rysunek kredkami
+col_left, col_right = st.columns([2, 1])
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Dni do startu", roznica.days)
-col2.metric("Godziny", roznica.seconds // 3600)
-col3.metric("Minuty", (roznica.seconds // 60) % 60)
-col4.metric("Cel", "CHICAGO, IL 🌭")
+with col_left:
+    st.subheader("🇺🇸 Rodzinne Centrum Dowodzenia | Poznań ➡️ Iowa & Illinois")
+
+    data_wyjazdu = datetime.datetime(2026, 6, 30, 8, 0)
+    teraz = datetime.datetime.now()
+    roznica = data_wyjazdu - teraz
+
+    m_col1, m_col2, m_col3 = st.columns(3)
+    m_col1.metric("Dni do startu", roznica.days)
+    m_col2.metric("Godziny", roznica.seconds // 3600)
+    m_col3.metric("Cel", "CHICAGO, IL 🌭")
+
+with col_right:
+    # Wstawiamy unikalny rysunek Chicago kredkami, wygenerowany w tej sesji
+    st.image("https://i.imgur.com/8Q4S8D4.png", caption="CHICAGO ROAD TRIP (Kredki)", use_container_width=True)
 
 st.markdown("---")
 
@@ -170,7 +177,7 @@ with tab_plan:
 # --- ZAKŁADKA 2: ZADANIA ---
 with tab_zadania:
     st.header("Formalności, Logistyka, Biurokracja")
-    st.write("Wszystkie wiersze są w 100% edytowalne. Puste wiersze na dole pozwalają dodać nowe zadania.")
+    st.write("Wszystkie wiersze are w 100% edytowalne. Puste wiersze na dole pozwalają dodać nowe zadania.")
     
     try:
         df_zadania = load_data("Zadania")
@@ -279,8 +286,8 @@ st.sidebar.write("* Mama (Logistyka)")
 st.sidebar.write("* Córka (7 lat)")
 st.sidebar.write("* Córka (4 lata)")
 
-# Grafika z trzema miastami na samym dole
+# Kolarz z trzema miastami na samym dole, jako "kolarz"
 st.markdown("---")
 st.markdown("### ✨ NASZA TRASA W OBIEKTYWIE")
-# Używam gotowej grafiki łączącej te trzy lokalizacje w stylu "travel postcard"
+# Używam linku do hostowanego kolarza retro pocztówki, wygenerowanego wcześniej
 st.image("https://i.imgur.com/GzW7wM1.png", caption="Poznań ➡️ Chicago ➡️ Des Moines (Iowa)", use_container_width=True)

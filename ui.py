@@ -55,8 +55,8 @@ def apply_custom_css():
     .customs-title {{ text-align: center; font-family: 'Anton', sans-serif; color: #0284c7; font-size: 1.8rem; margin-top: 0; margin-bottom: 5px; letter-spacing: 1px; }}
     .customs-sub {{ text-align: center; font-family: 'Open Sans', sans-serif; color: #64748b; font-size: 0.8rem; margin-bottom: 20px; text-transform: uppercase; font-weight: bold; }}
     .customs-line {{ border-bottom: 1px solid #bae6fd; padding-bottom: 8px; margin-bottom: 12px; font-size: 0.95rem; line-height: 1.4; }}
-    .c-num {{ font-weight: 800; color: #0284c7; margin-right: 5px; }}
-    .c-ans {{ font-weight: 800; color: #C62828; text-transform: uppercase; border-bottom: 1px dashed #C62828; }}
+    .c-num {{ font-weight: 800; color: #0284c7; margin-right: 5px; display: inline-block; min-width: 25px; }}
+    .c-ans {{ font-weight: 800; color: #C62828; text-transform: uppercase; border-bottom: 1px dashed #C62828; padding-left: 5px; padding-right: 5px; }}
 
     @media (max-width: 768px) {{
         .ticket {{ flex-direction: column; }} .ticket-left {{ border-right: none; border-bottom: 3px dashed #cbd5e1; padding-bottom: 25px; }} .ticket-left::after, .ticket-left::before {{ display: none; }} 
@@ -85,6 +85,37 @@ def jetlag_widget(city, flag, weather, timezone, subtitle, border_color):
     """
     components.html(html, height=175)
 
-def render_customs_card(c_name, c_dob, c_members, c_address, c_pass, c_flight, c_gifts):
-    html = f"""<div class="customs-card"><h3 class="customs-title">CUSTOMS DECLARATION</h3><div class="customs-sub">CBP Form 6059B (Cheat Sheet)</div><div class="customs-line"><span class="c-num">1.</span> Family Name, First Name: <span class="c-ans">{c_name}</span></div><div class="customs-line"><span class="c-num">2.</span> Birth date (MM/DD/YY): <span class="c-ans">{c_dob}</span></div><div class="customs-line"><span class="c-num">3.</span> Number of family members traveling with you: <span class="c-ans">{c_members}</span></div><div class="customs-line"><span class="c-num">4.</span> U.S. Street Address / Hotel: <span class="c-ans">{c_address}</span></div><div class="customs-line"><span class="c-num">5-6.</span> Passport issued by / Number: <span class="c-ans">{c_pass}</span></div><div class="customs-line"><span class="c-num">7.</span> Country of Residence: <span class="c-ans">POLAND</span></div><div class="customs-line"><span class="c-num">8.</span> Countries visited on this trip prior to U.S. arrival: <span class="c-ans">NONE</span></div><div class="customs-line"><span class="c-num">9.</span> Airline/Flight No.: <span class="c-ans">{c_flight}</span></div><div class="customs-line"><span class="c-num">10.</span> The primary purpose of this trip is business: <span class="c-ans">NO (X)</span></div><div style="margin-top: 15px; font-weight: bold; color: #0284c7; font-size: 0.85rem;">QUESTIONS 11 - 14:</div><div class="customs-line"><span class="c-num">11.</span> Bringing fruits, plants, meats, food? <span class="c-ans">NO (X)</span></div><div class="customs-line"><span class="c-num">12.</span> Proximity to livestock/farms? <span class="c-ans">NO (X)</span></div><div class="customs-line"><span class="c-num">13.</span> Carrying currency over $10,000 U.S.? <span class="c-ans">NO (X)</span></div><div class="customs-line"><span class="c-num">14.</span> Have commercial merchandise? <span class="c-ans">NO (X)</span></div><div style="margin-top: 15px;"><span class="c-num">15.</span> Visitors - total value of all articles that will remain in the U.S.: <span class="c-ans">${c_gifts}</span></div></div>"""
+def render_customs_card(d):
+    html = f"""
+    <div class="customs-card">
+        <h3 class="customs-title">CUSTOMS DECLARATION</h3>
+        <div class="customs-sub">CBP Form 6059B (Cheat Sheet)</div>
+
+        <div class="customs-line"><span class="c-num">1.</span> Family Name: <span class="c-ans">{d['c_last']}</span> | First: <span class="c-ans">{d['c_first']}</span> | Middle: <span class="c-ans">{d['c_middle']}</span></div>
+        <div class="customs-line"><span class="c-num">2.</span> Birth date (MM/DD/YY): <span class="c-ans">{d['c_dob']}</span></div>
+        <div class="customs-line"><span class="c-num">3.</span> Number of family members traveling with you: <span class="c-ans">{d['c_mem']}</span></div>
+        <div class="customs-line"><span class="c-num">4.</span> (a) U.S. Street Address: <span class="c-ans">{d['c_street']}</span></div>
+        <div class="customs-line">&nbsp;&nbsp;&nbsp;(b) City: <span class="c-ans">{d['c_city']}</span> &nbsp;&nbsp;(c) State: <span class="c-ans">{d['c_state']}</span></div>
+        <div class="customs-line"><span class="c-num">5.</span> Passport issued by: <span class="c-ans">{d['c_pass_country']}</span></div>
+        <div class="customs-line"><span class="c-num">6.</span> Passport number: <span class="c-ans">{d['c_pass_no']}</span></div>
+        <div class="customs-line"><span class="c-num">7.</span> Country of Residence: <span class="c-ans">{d['c_residence']}</span></div>
+        <div class="customs-line"><span class="c-num">8.</span> Countries visited on this trip prior to U.S. arrival: <span class="c-ans">{d['c_visited']}</span></div>
+        <div class="customs-line"><span class="c-num">9.</span> Airline/Flight No.: <span class="c-ans">{d['c_fly']}</span></div>
+        <div class="customs-line"><span class="c-num">10.</span> The primary purpose of this trip is business: <span class="c-ans">{d['c_10']}</span></div>
+
+        <div style="margin-top: 15px; font-weight: bold; color: #0284c7; font-size: 0.85rem;">11. I am (We are) bringing:</div>
+        <div class="customs-line">&nbsp;&nbsp;(a) fruits, vegetables, plants, seeds, food, insects: <span class="c-ans">{d['c_11a']}</span></div>
+        <div class="customs-line">&nbsp;&nbsp;(b) meats, animals, animal/wildlife products: <span class="c-ans">{d['c_11b']}</span></div>
+        <div class="customs-line">&nbsp;&nbsp;(c) disease agents, cell cultures, snails: <span class="c-ans">{d['c_11c']}</span></div>
+        <div class="customs-line">&nbsp;&nbsp;(d) soil or have been on a farm/ranch/pasture: <span class="c-ans">{d['c_11d']}</span></div>
+
+        <div class="customs-line"><span class="c-num">12.</span> I have (We have) been in close proximity of livestock: <span class="c-ans">{d['c_12']}</span></div>
+        <div class="customs-line"><span class="c-num">13.</span> Carrying currency/monetary instruments over $10,000 U.S.: <span class="c-ans">{d['c_13']}</span></div>
+        <div class="customs-line"><span class="c-num">14.</span> I have (We have) commercial merchandise: <span class="c-ans">{d['c_14']}</span></div>
+
+        <div style="margin-top: 15px;">
+            <span class="c-num">15.</span> Visitors - total value of all articles that will remain in the U.S.: <span class="c-ans">${d['c_15']}</span>
+        </div>
+    </div>
+    """
     st.markdown(html.replace('\n', ''), unsafe_allow_html=True)

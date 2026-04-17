@@ -36,7 +36,7 @@ def display_safe_image(filename_base, caption=""):
                 return
     
     # Jeśli pętla się zakończy i nie znajdzie pliku:
-    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' do repozytorium, aby go tutaj wyświetlić.")
+    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' lub '.jpg' do repozytorium, aby go tutaj wyświetlić.")
 
 # --- 2. ZAAWANSOWANY CSS (MOTYW BOARDING PASS + USA-MAX) ---
 st.markdown("""
@@ -311,7 +311,6 @@ st.markdown(f"""
                             <strong>DES MOINES, IA 🌽</strong>
                         </div>
                     </div>
-                    
                     <div class="ticket-row" style="margin-top: 10px; align-items: center;">
                         <div class="ticket-field">
                             <small>Origin</small>

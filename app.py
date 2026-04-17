@@ -11,21 +11,18 @@ st.set_page_config(
 )
 
 # --- KONFIGURACJA POŁĄCZENIA ---
-# Twój link do Google Sheets
 SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1SVabwrxRpf2Q7dAdRIR3xC9HCQs2sFMI4Z3dAn9HArY"
-
-# Inicjalizacja połączenia
 conn = st.connection("gsheets", type=GSheetsConnection)
 
-# Funkcja pomocnicza do pobierania danych
+# Funkcja pobierająca dane (ttl=0 wymusza zawsze świeże dane, wyłączając cache)
 def load_data(sheet_name):
-    return conn.read(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name)
+    return conn.read(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name, ttl=0)
 
 # --- NAGŁÓWEK I ODLICZANIE ---
 st.title("🗽 Misja: Chicago 2026")
 st.subheader("Centrum Dowodzenia Rodzinną Wyprawą")
 
-data_wyjazdu = datetime.datetime(2026, 6, 30, 8, 0) # Przykładowa godzina wyjazdu z Poznania
+data_wyjazdu = datetime.datetime(2026, 6, 30, 8, 0)
 teraz = datetime.datetime.now()
 roznica = data_wyjazdu - teraz
 
@@ -73,21 +70,41 @@ with tab_zadania:
     
     try:
         df_zadania = load_data("Zadania")
-        
-        # NAPRAWA BŁĘDU: Wymuszamy typ boolean dla Streamlita
         df_zadania["Status"] = df_zadania["Status"].astype(str).str.upper() == "TRUE"
         
-        # Edytor tabeli
+        # SZYBKIE DODAWANIE ZADAŃ
+        with st.expander("➕ Szybkie dodawanie nowego zadania"):
+            with st.form("nowe_zadanie_form", clear_on_submit=True):
+                col_n1, col_n2 = st.columns([3, 1])
+                with col_n1:
+                    nowe_zad = st.text_input("Treść zadania:")
+                with col_n2:
+                    kategorie_zad = ["Dokumenty", "Logistyka", "Finanse", "Zdrowie", "Zakupy", "Inne"]
+                    nowa_kat_zad = st.selectbox("Kategoria:", kategorie_zad)
+                
+                if st.form_submit_button("Dodaj do bazy"):
+                    if nowe_zad:
+                        nowy_wiersz = pd.DataFrame([{"Zadanie": nowe_zad, "Kategoria": nowa_kat_zad, "Status": False}])
+                        df_zadania = pd.concat([df_zadania, nowy_wiersz], ignore_index=True)
+                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=df_zadania)
+                        st.success(f"Dodano: {nowe_zad}!")
+                        st.rerun()
+                    else:
+                        st.warning("Wpisz nazwę zadania!")
+
+        # Edytor tabeli (z możliwością usuwania i edycji wierszy!)
+        st.markdown("💡 *Możesz dwukrotnie kliknąć dowolną komórkę poniżej, aby poprawić tekst, lub usunąć cały wiersz zaznaczając go.*")
         edited_tasks = st.data_editor(
             df_zadania, 
             column_config={"Status": st.column_config.CheckboxColumn("Zrobione?", default=False)},
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            num_rows="dynamic" # <--- To pozwala na usuwanie i dodawanie
         )
         
-        if st.button("Zapisz status zadań", key="save_tasks"):
+        if st.button("Zapisz status i edycje zadań", key="save_tasks"):
             conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=edited_tasks)
-            st.success("Zapisano zmiany w Google Sheets! ✅")
+            st.success("Zapisano zmiany w bazię! ✅")
             
     except Exception as e:
         st.error(f"Nie udało się wczytać zadań. Błąd: {e}")
@@ -98,10 +115,31 @@ with tab_bagaz:
     
     try:
         df_bagaz = load_data("Bagaz")
-        
-        # NAPRAWA BŁĘDU: Wymuszamy typ boolean dla Streamlita
         df_bagaz["Spakowane"] = df_bagaz["Spakowane"].astype(str).str.upper() == "TRUE"
         
+        # SZYBKIE DODAWANIE RZECZY DO BAGAŻU
+        with st.expander("➕ Dodaj nową rzecz do spakowania"):
+            with st.form("nowy_bagaz_form", clear_on_submit=True):
+                col_b1, col_b2, col_b3 = st.columns([2, 1, 1])
+                with col_b1:
+                    nowa_rzecz = st.text_input("Nazwa przedmiotu:")
+                with col_b2:
+                    kat_bagazu = ["Podreczny", "Rejestrowany", "Apteczka", "Dokumenty"]
+                    nowa_kat_bagaz = st.selectbox("Rodzaj bagażu:", kat_bagazu)
+                with col_b3:
+                    wlasciciele = ["Wspolne", "Tata", "Mama", "Corka 7", "Corka 4"]
+                    nowy_wlasciciel = st.selectbox("Właściciel:", wlasciciele)
+                
+                if st.form_submit_button("Dodaj do listy"):
+                    if nowa_rzecz:
+                        nowy_wiersz = pd.DataFrame([{"Przedmiot": nowa_rzecz, "Kategoria": nowa_kat_bagaz, "Wlasciciel": nowy_wlasciciel, "Spakowane": False}])
+                        df_bagaz = pd.concat([df_bagaz, nowy_wiersz], ignore_index=True)
+                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_bagaz)
+                        st.success(f"Dodano: {nowa_rzecz}!")
+                        st.rerun()
+                    else:
+                        st.warning("Wpisz nazwę przedmiotu!")
+
         # Filtry
         st.markdown("### Filtruj widok pakowania:")
         col_f1, col_f2 = st.columns(2)
@@ -110,21 +148,20 @@ with tab_bagaz:
         with col_f2:
             osoba_filter = st.multiselect("Czyj to bagaż?:", options=df_bagaz["Wlasciciel"].unique(), default=df_bagaz["Wlasciciel"].unique())
         
-        # Filtrowanie danych
         mask = df_bagaz["Kategoria"].isin(kat_filter) & df_bagaz["Wlasciciel"].isin(osoba_filter)
         filtered_bagaz = df_bagaz[mask]
         
         st.markdown("### Lista rzeczy:")
-        # Edytor bagażu
         edited_bagaz = st.data_editor(
             filtered_bagaz,
             column_config={"Spakowane": st.column_config.CheckboxColumn("W torbie?", default=False)},
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            num_rows="dynamic"
         )
         
         if st.button("Zapisz postęp pakowania", key="save_bag"):
-            # Aktualizujemy główny DataFrame zmianami z przefiltrowanego widoku
+            # Ponieważ filtrujemy dane, aktualizujemy główny DataFrame tym, co zmieniono w edytorze
             df_bagaz.update(edited_bagaz)
             conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_bagaz)
             st.success("Lista bagażowa zaktualizowana! 🎒")
@@ -139,8 +176,6 @@ with tab_dzieci:
     
     try:
         df_gry = load_data("Grywalizacja")
-        
-        # NAPRAWA BŁĘDU: Wymuszamy typ boolean dla Streamlita
         df_gry["Zaliczone"] = df_gry["Zaliczone"].astype(str).str.upper() == "TRUE"
         
         for index, row in df_gry.iterrows():
@@ -152,19 +187,15 @@ with tab_dzieci:
                 c3.success("ZALICZONE! 🎉")
             else:
                 if c3.button("ZROBIONE!", key=f"btn_{index}"):
-                    # Animacja sukcesu
                     st.balloons()
-                    # Aktualizacja danych
                     df_gry.at[index, 'Zaliczone'] = True
                     conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=df_gry)
                     st.rerun()
 
-        # Podsumowanie punktów
         suma_punktow = df_gry[df_gry['Zaliczone'] == True]['Punkty_do_zdobycia'].sum()
         st.divider()
         st.markdown(f"### 🏆 Razem zdobyliście: **{suma_punktow} punktów!**")
         
-        # Prosty pasek postępu (zakładając max 200 pkt z tabeli)
         max_punktow = df_gry['Punkty_do_zdobycia'].sum()
         if max_punktow > 0:
             st.progress(int((suma_punktow / max_punktow) * 100))

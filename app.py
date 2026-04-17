@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
 import datetime
@@ -35,7 +34,8 @@ def display_safe_image(filename_base, caption=""):
             try:
                 img = Image.open(file_path)
                 img.load()
-                st.image(img, caption=caption, use_container_width=True)
+                # AKTUALIZACJA STREAMLIT: width="stretch" zamiast use_container_width=True
+                st.image(img, caption=caption, width="stretch")
                 return
             except Exception:
                 st.error(f"⚠️ Plik {file_path} jest uszkodzony. Wgraj go ponownie.")
@@ -93,20 +93,17 @@ init_state("Bagaz", ["Spakowane"])
 init_state("Grywalizacja", ["Zaliczone"])
 
 def save_and_sync(sheet_name):
-    """Zaktualizowana, PANCERNA funkcja zapisu"""
     try:
         df = st.session_state[f"df_{sheet_name}"].copy()
         
-        # Masywna naprawa booleanów dla GSheets (zapobiega błędom formatu)
         for col in df.columns:
             df[col] = df[col].apply(lambda x: "TRUE" if x is True or str(x).strip().upper() == "TRUE" else ("FALSE" if x is False or str(x).strip().upper() == "FALSE" else x))
             
         conn.update(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name, data=df)
         st.cache_data.clear()
-        return True # Sukces zapisu
+        return True
         
     except Exception as e:
-        # Zatrzymujemy aplikację, żeby błąd nie zniknął!
         st.error(f"🚨 BŁĄD ZAPISU DO CHMURY: {e}")
         st.info("Prawdopodobnie aplikacja nie ma uprawnień do EDYCJI Twojego pliku Google Sheets. Czy na pewno wgrałeś plik 'secrets.toml' i dodałeś maila roboczego jako Edytora?")
         st.stop() 
@@ -180,7 +177,11 @@ def jetlag_widget(city, flag, weather, timezone, subtitle, border_color):
     setInterval(updateTime_{city.replace(' ','')}, 1000); updateTime_{city.replace(' ','')}();
     </script>
     """
-    components.html(html, height=175)
+    # AKTUALIZACJA STREAMLIT: Zastąpiono components.v1 na nowoczesny i wolny od błędów st.html / st.markdown
+    if hasattr(st, "html"):
+        st.html(html)
+    else:
+        st.markdown(html, unsafe_allow_html=True)
 
 def render_customs_card(d):
     html = f"""<div class="customs-card"><h3 class="customs-title">CUSTOMS DECLARATION</h3><div class="customs-sub">CBP Form 6059B (Cheat Sheet)</div><div class="customs-line"><span class="c-num">1.</span> Family Name: <span class="c-ans">{d['c_last']}</span> | First: <span class="c-ans">{d['c_first']}</span> | Middle: <span class="c-ans">{d['c_middle']}</span></div><div class="customs-line"><span class="c-num">2.</span> Birth date (MM/DD/YY): <span class="c-ans">{d['c_dob']}</span></div><div class="customs-line"><span class="c-num">3.</span> Number of family members traveling with you: <span class="c-ans">{d['c_mem']}</span></div><div class="customs-line"><span class="c-num">4.</span> (a) U.S. Street Address: <span class="c-ans">{d['c_street']}</span></div><div class="customs-line">&nbsp;&nbsp;&nbsp;(b) City: <span class="c-ans">{d['c_city']}</span> &nbsp;&nbsp;(c) State: <span class="c-ans">{d['c_state']}</span></div><div class="customs-line"><span class="c-num">5.</span> Passport issued by: <span class="c-ans">{d['c_pass_country']}</span></div><div class="customs-line"><span class="c-num">6.</span> Passport number: <span class="c-ans">{d['c_pass_no']}</span></div><div class="customs-line"><span class="c-num">7.</span> Country of Residence: <span class="c-ans">{d['c_residence']}</span></div><div class="customs-line"><span class="c-num">8.</span> Countries visited on this trip prior to U.S. arrival: <span class="c-ans">{d['c_visited']}</span></div><div class="customs-line"><span class="c-num">9.</span> Airline/Flight No.: <span class="c-ans">{d['c_fly']}</span></div><div class="customs-line"><span class="c-num">10.</span> The primary purpose of this trip is business: <span class="c-ans">{d['c_10']}</span></div><div style="margin-top: 15px; font-weight: bold; color: #0284c7; font-size: 0.85rem;">11. I am (We are) bringing:</div><div class="customs-line">&nbsp;&nbsp;(a) fruits, vegetables, plants, seeds, food, insects: <span class="c-ans">{d['c_11a']}</span></div><div class="customs-line">&nbsp;&nbsp;(b) meats, animals, animal/wildlife products: <span class="c-ans">{d['c_11b']}</span></div><div class="customs-line">&nbsp;&nbsp;(c) disease agents, cell cultures, snails: <span class="c-ans">{d['c_11c']}</span></div><div class="customs-line">&nbsp;&nbsp;(d) soil or have been on a farm/ranch/pasture: <span class="c-ans">{d['c_11d']}</span></div><div class="customs-line"><span class="c-num">12.</span> I have (We have) been in close proximity of livestock: <span class="c-ans">{d['c_12']}</span></div><div class="customs-line"><span class="c-num">13.</span> Carrying currency/monetary instruments over $10,000 U.S.: <span class="c-ans">{d['c_13']}</span></div><div class="customs-line"><span class="c-num">14.</span> I have (We have) commercial merchandise: <span class="c-ans">{d['c_14']}</span></div><div style="margin-top: 15px;"><span class="c-num">15.</span> Visitors - total value of all articles that will remain in the U.S.: <span class="c-ans">${d['c_15']}</span></div></div>"""
@@ -189,7 +190,8 @@ def render_customs_card(d):
 
 # --- ODŚWIEŻANIE ---
 _, col_sync = st.columns([8, 2])
-if col_sync.button("🔄 Wymuś Odświeżenie Chmury", use_container_width=True):
+# AKTUALIZACJA STREAMLIT: Zastąpiono use_container_width=True
+if col_sync.button("🔄 Wymuś Odświeżenie Chmury", width="stretch"):
     st.cache_data.clear()
     for key in list(st.session_state.keys()):
         if key.startswith("df_"): del st.session_state[key]
@@ -223,7 +225,8 @@ with t1:
                 card = f"""<div class="route-card"><div class="route-date">{r['Dzien']}</div><div style="width: 100%;"><div class="route-tag">{r['Etap']}</div><p style="margin:0; font-weight:600;">{r['Opis']}</p></div></div>"""
                 st.markdown(card.replace('\n', ''), unsafe_allow_html=True)
             with st.expander("⚙️ Tryb Edycji"):
-                ed_p = st.data_editor(df_p, use_container_width=True, hide_index=True, num_rows="dynamic")
+                # AKTUALIZACJA STREAMLIT: Zastąpiono use_container_width=True
+                ed_p = st.data_editor(df_p, width="stretch", hide_index=True, num_rows="dynamic")
                 if st.button("Zapisz Roadmap"):
                     st.session_state["df_Plan"] = ed_p
                     if save_and_sync("Plan"): safe_rerun()
@@ -254,7 +257,8 @@ with t2:
                         st.session_state["df_Zadania"].at[i, "Status"] = True
                         if save_and_sync("Zadania"): safe_rerun()
         with st.expander("⚙️ Admin Zadań"):
-            ed_z = st.data_editor(df_z, column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic")
+            # AKTUALIZACJA STREAMLIT: Zastąpiono use_container_width=True
+            ed_z = st.data_editor(df_z, column_config={"Status": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic", width="stretch")
             if st.button("Zapisz Zadania"): 
                 st.session_state["df_Zadania"] = ed_z
                 if save_and_sync("Zadania"): safe_rerun()
@@ -282,7 +286,8 @@ with t3:
                         st.session_state["df_Bagaz"].at[i, "Spakowane"] = True
                         if save_and_sync("Bagaz"): safe_rerun()
         with st.expander("⚙️ Admin Bagażu"):
-            ed_b = st.data_editor(df_b, column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic")
+            # AKTUALIZACJA STREAMLIT: Zastąpiono use_container_width=True
+            ed_b = st.data_editor(df_b, column_config={"Spakowane": st.column_config.CheckboxColumn("OK", width="small")}, hide_index=True, num_rows="dynamic", width="stretch")
             if st.button("Zapisz Bagaż"): 
                 st.session_state["df_Bagaz"] = ed_b
                 if save_and_sync("Bagaz"): safe_rerun()
@@ -304,7 +309,8 @@ with t4:
                     st.session_state["show_balloons"] = True
                     if save_and_sync("Grywalizacja"): safe_rerun()
         with st.expander("⚙️ Admin Gry"):
-            ed_g = st.data_editor(df_g, hide_index=True, num_rows="dynamic")
+            # AKTUALIZACJA STREAMLIT: Zastąpiono use_container_width=True
+            ed_g = st.data_editor(df_g, column_config={"Zaliczone": st.column_config.CheckboxColumn("Zaliczone?", default=False)}, hide_index=True, num_rows="dynamic", width="stretch")
             if st.button("Zapisz Gry"): 
                 st.session_state["df_Grywalizacja"] = ed_g
                 if save_and_sync("Grywalizacja"): safe_rerun()

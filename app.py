@@ -5,18 +5,18 @@ import datetime
 import os
 from PIL import Image, ImageFile
 
-# Zabezpieczenie przed lekko "urwanymi" plikami graficznymi na GitHubie
+# Zabezpieczenie plików graficznych
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # --- 1. KONFIGURACJA STRONY ---
 st.set_page_config(
-    page_title="CHICAGO '26 | OPERATION HUB 🇺🇸",
+    page_title="IOWA '26 | OPERATION HUB 🇺🇸",
     page_icon="✈️",
     layout="wide",
     initial_sidebar_state="expanded" 
 )
 
-# --- 2. ZAAWANSOWANY CSS "USA-MAX" ---
+# --- 2. ZAAWANSOWANY CSS (MOTYW BOARDING PASS + USA-MAX) ---
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
@@ -24,7 +24,8 @@ st.markdown("""
     footer { visibility: hidden; }
     #MainMenu { visibility: hidden; }
 
-    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Open+Sans:wght@400;600;800&display=swap');
+    /* Czcionki: Anton (nagłówki), Open Sans (tekst), Libre Barcode (kod kreskowy) */
+    @import url('https://fonts.googleapis.com/css2?family=Anton&family=Open+Sans:wght@400;600;800&family=Libre+Barcode+39+Text&display=swap');
 
     .stApp {
         background-color: #f8f9fa;
@@ -35,66 +36,144 @@ st.markdown("""
         font-family: 'Open Sans', sans-serif !important;
     }
 
-    .hero-marquee {
-        background-color: #0B2447;
-        border-radius: 20px;
-        padding: 30px 40px;
-        color: #FFC72C;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        margin-top: -30px;
-        margin-bottom: 30px;
-        border: 4px solid #C62828;
-        position: relative;
+    /* --- REALISTYCZNY BILET LOTNICZY (BOARDING PASS) --- */
+    .boarding-pass-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: -20px;
+        margin-bottom: 40px;
+    }
+    .ticket {
+        display: flex;
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
         overflow: hidden;
+        width: 100%;
+        max-width: 1100px;
+        position: relative;
+        border: 1px solid #e2e8f0;
     }
-    
-    .hero-marquee::after {
-        content: "🇺🇸";
-        font-size: 120px;
+    .ticket-left {
+        flex: 3;
+        display: flex;
+        flex-direction: column;
+        border-right: 3px dashed #cbd5e1;
+        position: relative;
+    }
+    /* Półkola wycinające bilet na łączeniu */
+    .ticket-left::after, .ticket-left::before {
+        content: '';
         position: absolute;
-        right: -10px;
-        top: -20px;
-        opacity: 0.1;
-        transform: rotate(30deg);
+        right: -12px;
+        width: 20px;
+        height: 20px;
+        background-color: #f8f9fa; /* Kolor tła aplikacji */
+        border-radius: 50%;
+        border-left: 1px solid #e2e8f0;
+        z-index: 10;
     }
+    .ticket-left::before { top: -10px; border-bottom: 1px solid #e2e8f0; border-left: none; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.05); }
+    .ticket-left::after { bottom: -10px; border-top: 1px solid #e2e8f0; border-left: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
 
-    .marquee-title {
-        font-family: 'Anton', sans-serif !important;
-        font-weight: 400;
-        font-size: 3rem !important;
-        letter-spacing: -1px;
-        margin: 0;
+    .ticket-header {
+        background-color: #0B2447;
+        color: #FFC72C;
+        padding: 15px 25px;
+        font-family: 'Anton', sans-serif;
+        font-size: 1.5rem;
+        letter-spacing: 2px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .ticket-header span.flight-class {
+        font-family: 'Open Sans', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 800;
+        background: #C62828;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+    .ticket-body {
+        padding: 25px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+    .ticket-row {
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    .ticket-field {
+        display: flex;
+        flex-direction: column;
+    }
+    .ticket-field small {
+        color: #64748b;
+        font-size: 0.75rem;
+        font-weight: 800;
         text-transform: uppercase;
+        margin-bottom: 4px;
+        letter-spacing: 1px;
+    }
+    .ticket-field strong {
+        color: #0f2027;
+        font-size: 1.2rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .ticket-airport {
+        font-family: 'Anton', sans-serif;
+        font-size: 3rem;
+        color: #C62828;
+        line-height: 1;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+    }
+    .ticket-airport span {
+        font-family: 'Open Sans', sans-serif;
+        font-size: 1rem;
+        color: #0B2447;
+        font-weight: 800;
     }
     
-    .marquee-subtitle {
-        font-weight: 800;
-        font-size: 1.1rem;
-        color: #f1f1f1;
-        opacity: 0.9;
-        margin-top: -5px;
-        margin-bottom: 20px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
+    .ticket-right {
+        flex: 1;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        min-width: 200px;
     }
-
-    div[data-testid="stMetricValue"] {
+    .ticket-right .countdown-num {
         font-family: 'Anton', sans-serif;
-        color: #F40000;
-        font-size: 4rem !important;
-        font-weight: 400;
-        letter-spacing: -2px;
-        margin-top: -10px;
-    }
-    div[data-testid="stMetricLabel"] {
-        font-family: 'Open Sans', sans-serif;
-        font-size: 1.1rem !important;
-        font-weight: 800 !important;
+        font-size: 4.5rem;
         color: #0B2447;
-        text-transform: uppercase;
+        line-height: 1;
+        margin-bottom: -5px;
+    }
+    .ticket-right .countdown-lbl {
+        color: #C62828;
+        font-weight: 800;
         letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-bottom: 15px;
+    }
+    .ticket-barcode {
+        font-family: 'Libre Barcode 39 Text', cursive;
+        font-size: 3.5rem;
+        color: #334155;
+        line-height: 0.8;
     }
 
+    /* --- RESZTA STYLIZACJI (Zakładki, przyciski, karty) --- */
     .stTabs [data-baseweb="tab-list"] {
         background-color: rgba(255, 255, 255, 0.7);
         border-radius: 12px;
@@ -116,7 +195,6 @@ st.markdown("""
         color: #FFC72C !important;
         box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important;
     }
-
     .stButton>button {
         background-color: #C62828 !important;
         color: white !important;
@@ -125,23 +203,8 @@ st.markdown("""
         padding: 10px 20px !important;
         font-weight: 800 !important;
         box-shadow: 0 4px 12px rgba(198, 40, 40, 0.3) !important;
-        transition: transform 0.1s ease, box-shadow 0.1s ease !important;
         text-transform: uppercase;
     }
-    .stButton>button:hover {
-        transform: scale(1.03) !important;
-        box-shadow: 0 6px 18px rgba(198, 40, 40, 0.2) !important;
-    }
-    
-    div[data-testid="stDataFrame"] {
-        background-color: rgba(255, 255, 255, 0.9) !important;
-        border-radius: 16px !important;
-        overflow: hidden !important;
-        border: 2px solid #e2e8f0 !important;
-        box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important;
-    }
-
-    /* NOWE: STYLE DLA KART HARMONOGRAMU (TIMELINE) */
     .route-card {
         background-color: white;
         border-radius: 12px;
@@ -151,11 +214,6 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         display: flex;
         align-items: center;
-        transition: transform 0.2s;
-    }
-    .route-card:hover {
-        transform: translateX(5px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
     }
     .route-date {
         font-family: 'Anton', sans-serif;
@@ -167,9 +225,6 @@ st.markdown("""
         padding-right: 20px;
         margin-right: 20px;
     }
-    .route-content {
-        flex-grow: 1;
-    }
     .route-tag {
         display: inline-block;
         background-color: #FFC72C;
@@ -180,12 +235,6 @@ st.markdown("""
         border-radius: 20px;
         text-transform: uppercase;
         margin-bottom: 8px;
-    }
-    .route-desc {
-        font-size: 1.1rem;
-        color: #1e293b;
-        font-weight: 600;
-        margin: 0;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -209,98 +258,126 @@ roznica = data_wyjazdu - teraz
 dni = roznica.days
 godziny = roznica.seconds // 3600
 
-# --- 5. PREMIUM HERO SECTION ---
+# --- 5. BOARDING PASS HERO SECTION ---
 st.markdown(f"""
-    <div class="hero-marquee">
-        <p class="marquee-subtitle">MISSION STATUS | OPERATION HUB | DEPARTURE: Poznań ➡️ Iowa ➡️ Chicago</p>
-        <h1 class="marquee-title">OPERATION: CHICAGO</h1>
+    <div class="boarding-pass-wrapper">
+        <div class="ticket">
+            <div class="ticket-left">
+                <div class="ticket-header">
+                    <span>🇺🇸 OPERATION: IOWA 2026</span>
+                    <span class="flight-class">FAMILY CLASS</span>
+                </div>
+                <div class="ticket-body">
+                    <div class="ticket-row">
+                        <div class="ticket-field">
+                            <small>Passenger</small>
+                            <strong>THE CREW (4)</strong>
+                        </div>
+                        <div class="ticket-field">
+                            <small>Date</small>
+                            <strong>30 JUN 2026</strong>
+                        </div>
+                        <div class="ticket-field">
+                            <small>Final Destination</small>
+                            <strong>DES MOINES, IA 🌽</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="ticket-row" style="margin-top: 10px; align-items: center;">
+                        <div class="ticket-field">
+                            <small>Origin</small>
+                            <div class="ticket-airport">POZ <span>Poznań</span></div>
+                        </div>
+                        <div style="font-size: 2rem; color: #cbd5e1;">✈️</div>
+                        <div class="ticket-field">
+                            <small>Transfer Hub</small>
+                            <div class="ticket-airport" style="color: #0B2447;">ORD <span>Chicago</span></div>
+                        </div>
+                        <div style="font-size: 2rem; color: #cbd5e1;">🚗</div>
+                        <div class="ticket-field">
+                            <small>Destination</small>
+                            <div class="ticket-airport">DSM <span>Des Moines</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="ticket-right">
+                <div class="countdown-num">{dni}</div>
+                <div class="countdown-lbl">Days Left</div>
+                <div class="ticket-barcode">*IOWA2026*</div>
+            </div>
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
-col_info, col_img_header = st.columns([2, 1])
-
-with col_info:
-    m_col1, m_col2, m_col3 = st.columns(3)
-    m_col1.metric("Countdown (Days)", f"{dni}")
-    m_col2.metric("Hours Left", f"{godziny}")
-    m_col3.metric("Status", "DEPART")
-    
-    st.markdown("<p style='background-color: rgba(255,199,44,0.1); border-radius: 10px; padding: 15px; border: 2px solid #FFC72C; color: #0B2447;'>💡 <strong>MISSION PROFILE:</strong> Bezpieczny, zorganizowany i bezstresowy wylot z dwójką dzieci do USA.</p>", unsafe_allow_html=True)
-
-with col_img_header:
-    try:
-        if os.path.exists("chicago.png"):
-            img = Image.open("chicago.png")
-            st.image(img, caption="CHICAGO ROAD Sketch", use_container_width=True)
-        elif os.path.exists("chicago.jpg"):
-            img = Image.open("chicago.jpg")
-            st.image(img, caption="CHICAGO ROAD Sketch", use_container_width=True)
-        else:
-            st.warning("⚠️ Brak pliku chicago.png")
-    except Exception as e:
-        st.error("⚠️ Plik chicago jest uszkodzony.")
-
-st.markdown("---")
-
 # --- 6. GŁÓWNY INTERFEJS (ZAKŁADKI) ---
 tab_plan, tab_zadania, tab_bagaz, tab_dzieci = st.tabs([
-    "📍 Roadmap", 
+    "📍 Roadmap & Map", 
     "✅ Checklist", 
     "🧳 Cargo", 
     "🎮 Kids Hub"
 ])
 
-# --- ZAKŁADKA 1: PLAN PODRÓŻY (TIMELINE KARTY ZAMIAST TABELI) ---
+# --- ZAKŁADKA 1: PLAN PODRÓŻY & MAPA ---
 with tab_plan:
-    st.markdown("<h3 style='color: #0f2027;'>📍 Road Trip & Flights Harmonogram</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #0f2027;'>🗺️ Trasa: Poznań ➡️ Chicago ➡️ Des Moines</h3>", unsafe_allow_html=True)
     
+    # SEKCJA MAPY NA SAMEJ GÓRZE ZAKŁADKI
     try:
-        df_plan = load_data("Plan")
-        
-        # Generowanie natywnych kart HTML zamiast nudnej tabeli
-        for index, row in df_plan.iterrows():
-            st.markdown(f"""
-            <div class="route-card">
-                <div class="route-date">{row['Dzien']}</div>
-                <div class="route-content">
-                    <div class="route-tag">{row['Etap']}</div>
-                    <p class="route-desc">{row['Opis']}</p>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+        if os.path.exists("mapa.png"):
+            img = Image.open("mapa.png")
+            st.image(img, caption="Strategiczna Mapa Operacji", use_container_width=True)
+        else:
+            st.info("💡 Wgraj plik 'mapa.png' do głównego folderu na GitHub, aby wyświetlić tutaj mapę trasy.")
+    except Exception as e:
+        st.error("⚠️ Plik mapa.png jest uszkodzony.")
 
-        st.write("") # Odstęp
-        
-        # Panel Edycji ukryty dla czystości interfejsu
-        with st.expander("⚙️ Tryb Edycji Harmonogramu (Admin Table)"):
-            st.caption("Edytuj dane poniżej. Karta główna zaktualizuje się po zapisaniu.")
-            edited_plan = st.data_editor(
-                df_plan, 
-                use_container_width=True, 
-                hide_index=True, 
-                num_rows="dynamic",
-                height=300
-            )
-            if st.button("Zapisz Harmonogram (Sync)", key="save_plan"):
-                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Plan", data=edited_plan)
-                st.toast("Zapisano Harmonogram!", icon="✅")
-                st.rerun()
-                
-    except Exception as e:
-        st.error(f"Błąd: {e}")
-    
     st.divider()
-    st.markdown("<h3 style='color: #0f2027;'>✨ Przystanek na trasie: Des Moines, IOWA</h3>", unsafe_allow_html=True)
+
+    col_timeline, col_features = st.columns([2, 1])
     
-    try:
-        if os.path.exists("desmoines.png"):
-            img = Image.open("desmoines.png")
-            st.image(img, caption="IOWA Local Feature Sketch", use_container_width=True)
-        elif os.path.exists("desmoines.jpg"):
-            img = Image.open("desmoines.jpg")
-            st.image(img, caption="IOWA Local Feature Sketch", use_container_width=True)
-    except Exception as e:
-        st.error("⚠️ Plik desmoines jest uszkodzony.")
+    with col_timeline:
+        st.markdown("<h4 style='color: #0f2027;'>Harmonogram</h4>", unsafe_allow_html=True)
+        try:
+            df_plan = load_data("Plan")
+            
+            # Karty Timeline
+            for index, row in df_plan.iterrows():
+                st.markdown(f"""
+                <div class="route-card">
+                    <div class="route-date">{row['Dzien']}</div>
+                    <div>
+                        <div class="route-tag">{row['Etap']}</div>
+                        <p style="margin: 0; font-weight: 600; color: #1e293b;">{row['Opis']}</p>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            # Panel Edycji (ukryty)
+            with st.expander("⚙️ Tryb Edycji Harmonogramu"):
+                edited_plan = st.data_editor(df_plan, use_container_width=True, hide_index=True, num_rows="dynamic")
+                if st.button("Zapisz Harmonogram", key="save_plan"):
+                    conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Plan", data=edited_plan)
+                    st.toast("Zapisano Harmonogram!", icon="✅")
+                    st.rerun()
+                    
+        except Exception as e:
+            st.error(f"Błąd bazy danych: {e}")
+
+    with col_features:
+        st.markdown("<h4 style='color: #0f2027;'>Punkty Orientacyjne</h4>", unsafe_allow_html=True)
+        # ZDJĘCIE CHICAGO
+        try:
+            if os.path.exists("chicago.png"): st.image(Image.open("chicago.png"), use_container_width=True)
+            elif os.path.exists("chicago.jpg"): st.image(Image.open("chicago.jpg"), use_container_width=True)
+        except: pass
+        
+        # ZDJĘCIE DES MOINES
+        try:
+            if os.path.exists("desmoines.png"): st.image(Image.open("desmoines.png"), use_container_width=True)
+            elif os.path.exists("desmoines.jpg"): st.image(Image.open("desmoines.jpg"), use_container_width=True)
+        except: pass
+
 
 # --- ZAKŁADKA 2: ZADANIA ---
 with tab_zadania:
@@ -313,14 +390,10 @@ with tab_zadania:
         wszystkie = len(df_zadania)
         progres = zrobione / wszystkie if wszystkie > 0 else 0
         
-        st.write("") 
-        col_prog, col_metrics = st.columns([3, 1])
+        col_prog, _ = st.columns([3, 1])
         with col_prog:
-            st.progress(progres, text=f"LOGISTYKA UKOŃCZONA: {zrobione}/{wszystkie} zadań")
+            st.progress(progres, text=f"STATUS: {zrobione}/{wszystkie} ukończonych zadań")
         
-        st.write("") 
-        
-        # Ulepszona tabela z konfiguracją kolumn
         edited_tasks = st.data_editor(
             df_zadania, 
             column_config={
@@ -389,7 +462,7 @@ with tab_dzieci:
             if row['Zaliczone']:
                 c3.markdown("✅ **Zaliczone**")
             else:
-                if c3.button("ZROBIONE!", key=f"btn_{index}", help="Kliknij, jeśli zadanie wykonane!"):
+                if c3.button("ZROBIONE!", key=f"btn_{index}"):
                     st.balloons()
                     df_gry.at[index, 'Zaliczone'] = True
                     conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=df_gry)
@@ -411,10 +484,10 @@ with tab_dzieci:
         st.error(f"Błąd: {e}")
 
 # --- SIDEBAR ---
-st.sidebar.markdown("### 👨‍👩‍👧‍👧 ZAŁOGA MISJI (THE CREW):")
+st.sidebar.markdown("### 👨‍👩‍👧‍👧 ZAŁOGA MISJI:")
 st.sidebar.write("🎒 🏈 **Tata** (The Big Boss)")
 st.sidebar.write("📋 ⚾ **Mama** (Logistics Manager)")
-st.sidebar.write("👧 ✈️ **Córka** (Future Explorer, 7 lat)")
-st.sidebar.write("👧 🚌 **Córka** (Country Kid, 4 lata)")
+st.sidebar.write("👧 ✈️ **Córka** (Explorer, 7 lat)")
+st.sidebar.write("👧 🌽 **Córka** (Country Kid, 4 lata)")
 st.sidebar.divider()
-st.sidebar.success("Połączenie IOWA/IL: Aktywne 🔴🟢")
+st.sidebar.success("Cel zablokowany: Des Moines, IA 🌽")

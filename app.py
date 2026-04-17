@@ -6,7 +6,7 @@ import os
 import base64
 from PIL import Image, ImageFile
 
-# Zabezpieczenie przed "uciętymi" plikami graficznymi (częsty problem przy uploadzie na GitHub)
+# Zabezpieczenie przed "uciętymi" plikami graficznymi
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # --- 1. KONFIGURACJA STRONY ---
@@ -17,9 +17,8 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- FUNKCJE POMOCNICZE (BASE64 I OBRAZY) ---
+# --- FUNKCJE POMOCNICZE ---
 def get_base64_of_bin_file(bin_file):
-    """Zmienia plik na format Base64 (potrzebne do tła w CSS)"""
     try:
         with open(bin_file, 'rb') as f:
             data = f.read()
@@ -28,7 +27,6 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 def display_safe_image(filename_base, caption=""):
-    """Szuka pliku graficznego, ładuje go bezpiecznie i wyświetla."""
     extensions = ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']
     for ext in extensions:
         file_path = f"{filename_base}{ext}"
@@ -39,11 +37,11 @@ def display_safe_image(filename_base, caption=""):
                 st.image(img, caption=caption, use_container_width=True)
                 return
             except Exception:
-                st.error(f"⚠️ Plik {file_path} jest uszkodzony. Wgraj go ponownie na GitHuba.")
+                st.error(f"⚠️ Plik {file_path} jest uszkodzony. Wgraj go ponownie.")
                 return
-    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' lub '.jpg' do repozytorium.")
+    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' do repozytorium na GitHub.")
 
-# --- 2. ZAAWANSOWANY CSS Z DYNAMICZNYM TŁEM (I RESPONSYWNOŚCIĄ) ---
+# --- 2. ZAAWANSOWANY CSS Z DYNAMICZNYM TŁEM ---
 mapa_b64 = get_base64_of_bin_file("mapa.png")
 if not mapa_b64:
     mapa_b64 = get_base64_of_bin_file("mapa.jpg")
@@ -71,7 +69,6 @@ else:
 
 st.markdown(f"""
     <style>
-    /* Ukrycie UI Streamlita */
     header[data-testid="stHeader"] {{ visibility: hidden; }}
     footer {{ visibility: hidden; }}
     #MainMenu {{ visibility: hidden; }}
@@ -113,9 +110,7 @@ st.markdown(f"""
     .stButton>button {{ background-color: #C62828 !important; color: white !important; border-radius: 8px !important; border: none !important; padding: 5px 15px !important; font-weight: 800 !important; box-shadow: 0 2px 6px rgba(198, 40, 40, 0.3) !important; text-transform: uppercase; }}
     div[data-testid="stDataFrame"] {{ background-color: rgba(255, 255, 255, 0.95) !important; border-radius: 16px !important; overflow: hidden !important; border: 2px solid #e2e8f0 !important; box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important; backdrop-filter: blur(10px); }}
 
-    /* ======================================================== */
-    /* 📱 MAGICZNY BLOK DLA TELEFONÓW (RESPONSYWNOŚĆ)           */
-    /* ======================================================== */
+    /* --- RESPONSYWNOŚĆ (TELEFONY) --- */
     @media (max-width: 768px) {{
         .ticket {{ flex-direction: column; }}
         .ticket-left {{ border-right: none; border-bottom: 3px dashed #cbd5e1; padding-bottom: 25px; }}
@@ -145,14 +140,28 @@ def get_connection():
 conn = get_connection()
 
 def load_data(sheet_name):
+    # Wczytanie z pominięciem cache, choć to nie zawsze wystarcza (dlatego dodano cache_data.clear niżej)
     return conn.read(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name, ttl=0)
+
+# NOWA POTĘŻNA FUNKCJA ZAPISUJĄCA (Zabija problemy z cachem)
+def save_to_gsheets(worksheet_name, df):
+    df_to_save = df.copy()
+    # Tłumaczymy Boole na twardy tekst, żeby Google Sheets się nie pogubiło
+    for col in df_to_save.columns:
+        if df_to_save[col].dtype == bool:
+            df_to_save[col] = df_to_save[col].map({True: "TRUE", False: "FALSE"})
+    
+    # Wysłanie do bazy
+    conn.update(spreadsheet=SPREADSHEET_URL, worksheet=worksheet_name, data=df_to_save)
+    
+    # KLUCZOWE: Całkowite zresetowanie pamięci podręcznej aplikacji
+    st.cache_data.clear()
 
 # --- 4. LOGIKA CZASU ---
 target_date = datetime.datetime(2026, 6, 30, 8, 0)
 days_left = (target_date - datetime.datetime.now()).days
 
 # --- 5. BILET (BOARDING PASS) ---
-# Zapisane w 100% bezpiecznie (bez znaków nowej linii), aby Streamlit go nie zepsuł
 html_ticket = f"""
 <div class="boarding-pass-wrapper">
     <div class="ticket">
@@ -224,7 +233,7 @@ with t1:
             with st.expander("⚙️ Tryb Edycji Harmonogramu"):
                 ed_p = st.data_editor(df_p, use_container_width=True, hide_index=True, num_rows="dynamic")
                 if st.button("Zapisz Roadmap"):
-                    conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Plan", data=ed_p)
+                    save_to_gsheets("Plan", ed_p)
                     st.toast("Zapisano Harmonogram!", icon="✅")
                     st.rerun()
         except Exception as e: 
@@ -247,7 +256,6 @@ with t2:
         st.progress(done/total if total > 0 else 0, text=f"Ukończono: {done}/{total}")
         st.write("")
         
-        # Responsywne karty zadań
         for i, r in df_z.iterrows():
             c1, c2 = st.columns([3, 1])
             is_done = r['Status']
@@ -265,12 +273,12 @@ with t2:
                 if is_done:
                     if st.button("COFNIJ", key=f"z_{i}"):
                         df_z.at[i, "Status"] = False
-                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=df_z)
+                        save_to_gsheets("Zadania", df_z)
                         st.rerun()
                 else:
                     if st.button("ZROBIONE!", type="primary", key=f"z_{i}"):
                         df_z.at[i, "Status"] = True
-                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=df_z)
+                        save_to_gsheets("Zadania", df_z)
                         st.rerun()
 
         st.write("")
@@ -283,7 +291,7 @@ with t2:
                 num_rows="dynamic"
             )
             if st.button("Zapisz Edycję Zadań"):
-                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Zadania", data=ed_z)
+                save_to_gsheets("Zadania", ed_z)
                 st.toast("Zapisano zmiany w bazie!")
                 st.rerun()
                 
@@ -306,7 +314,6 @@ with t3:
             st.progress(done_b/total_b, text=f"Spakowano: {done_b}/{total_b} rzeczy")
             st.write("")
 
-        # Responsywne karty bagażu
         for i, r in filtered_df.iterrows():
             c1, c2 = st.columns([3, 1])
             is_packed = r['Spakowane']
@@ -324,12 +331,12 @@ with t3:
                 if is_packed:
                     if st.button("WYPAKUJ", key=f"b_{i}"):
                         df_b.at[i, "Spakowane"] = False 
-                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_b)
+                        save_to_gsheets("Bagaz", df_b)
                         st.rerun()
                 else:
                     if st.button("DO WALIZKI", type="primary", key=f"b_{i}"):
                         df_b.at[i, "Spakowane"] = True
-                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=df_b)
+                        save_to_gsheets("Bagaz", df_b)
                         st.rerun()
         
         st.write("")
@@ -342,7 +349,8 @@ with t3:
                 num_rows="dynamic"
             )
             if st.button("Zapisz Edycję Bagażu"):
-                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Bagaz", data=ed_b)
+                df_b.update(ed_b)
+                save_to_gsheets("Bagaz", df_b)
                 st.toast("Zapisano zmiany w bazie!")
                 st.rerun()
                 
@@ -373,7 +381,7 @@ with t4:
                     if st.button("ZROBIONE!", type="primary", key=f"g_{i}"):
                         st.balloons()
                         df_g.at[i, "Zaliczone"] = True
-                        conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=df_g)
+                        save_to_gsheets("Grywalizacja", df_g)
                         st.rerun()
                 
         st.write("")
@@ -386,7 +394,7 @@ with t4:
                 num_rows="dynamic"
             )
             if st.button("Zapisz zasady gry"):
-                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Grywalizacja", data=ed_g)
+                save_to_gsheets("Grywalizacja", ed_g)
                 st.toast("Zaktualizowano misje!")
                 st.rerun()
                 

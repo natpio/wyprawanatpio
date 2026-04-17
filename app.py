@@ -98,24 +98,25 @@ tab_plan, tab_zadania, tab_bagaz, tab_dzieci = st.tabs([
 # --- ZAKŁADKA 1: PLAN PODRÓŻY ---
 with tab_plan:
     st.header("ROADMAP: Harmonogram Wyprawy")
-    col_a, col_b = st.columns(2)
+    st.write("Twój plan lotu jest teraz w pełni interaktywny. Dodawaj nowe przystanki lub zmieniaj godziny bezpośrednio w tabeli poniżej.")
     
-    with col_a:
-        st.markdown("""
-        ### 🚌 Stage 1: POLAND
-        * **30.06.2026:** Wyjazd Flixbusem z Poznania do Warszawy.
-        * **30.06.2026:** Przyjazd do Warszawy, zameldowanie w hotelu.
-        * **Noc 30.06/01.07:** Odpoczynek i transfer na lotnisko Okęcie (WAW).
-        """)
-    
-    with col_b:
-        st.markdown("""
-        ### ✈️ Stage 2: THE FLIGHTS
-        * **01.07.2026:** Lot Warszawa (WAW) ➡️ Monachium (MUC).
-        * **01.07.2026:** Przesiadka w Monachium (uwaga na zmianę bramek!).
-        * **01.07.2026:** Lot Monachium (MUC) ➡️ Chicago (ORD).
-        * **Welcome to the USA! 🌽🇺🇸**
-        """)
+    try:
+        df_plan = load_data("Plan")
+        
+        # Edytor planu podróży
+        edited_plan = st.data_editor(
+            df_plan,
+            use_container_width=True,
+            hide_index=True,
+            num_rows="dynamic" # Pozwala na dodawanie i usuwanie etapów podróży
+        )
+        
+        if st.button("🗺️ ZAPISZ PLAN (SYNC)", key="save_plan"):
+            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Plan", data=edited_plan)
+            st.success("Harmonogram zaktualizowany! Trasa wyznaczona. 🚍✈️")
+            
+    except Exception as e:
+        st.error(f"System Error: {e}. Upewnij się, że stworzyłeś zakładkę 'Plan' w Google Sheets!")
 
 # --- ZAKŁADKA 2: ZADANIA ---
 with tab_zadania:

@@ -13,6 +13,7 @@ def get_base64_of_bin_file(bin_file):
         return None
 
 def display_safe_image(filename_base, caption=""):
+    """Szuka i bezpiecznie wyświetla pliki graficzne"""
     extensions = ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']
     for ext in extensions:
         file_path = f"{filename_base}{ext}"
@@ -20,14 +21,15 @@ def display_safe_image(filename_base, caption=""):
             try:
                 img = Image.open(file_path)
                 img.load() 
-                st.image(img, caption=caption, use_container_width=True) # lub width="stretch" dla nowych wersji Streamlit
+                st.image(img, caption=caption, use_container_width=True) 
                 return
             except Exception:
-                st.error(f"⚠️ Plik {file_path} uszkodzony.")
+                st.error(f"⚠️ Plik {file_path} jest uszkodzony.")
                 return
-    st.info(f"💡 [Brak grafiki] Wgraj plik '{filename_base}.png' do repozytorium.")
+    st.info(f"💡 Wgraj plik '{filename_base}.png' na GitHub.")
 
 def apply_custom_css():
+    """Wstrzykuje CSS i tło"""
     mapa_b64 = get_base64_of_bin_file("mapa.png") or get_base64_of_bin_file("mapa.jpg")
     bg_css = f'background-image: linear-gradient(rgba(248, 249, 250, 0.88), rgba(248, 249, 250, 0.88)), url("data:image/png;base64,{mapa_b64}");' if mapa_b64 else 'background-color: #f8f9fa; background-image: linear-gradient(135deg, rgba(244, 0, 0, 0.05) 0%, rgba(255, 199, 44, 0.05) 100%), radial-gradient(#d3dce6 1px, transparent 1px);'
     

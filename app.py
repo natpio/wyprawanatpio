@@ -8,7 +8,7 @@ from PIL import Image, ImageFile
 # Zabezpieczenie przed lekko "urwanymi" plikami graficznymi na GitHubie
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-# --- 1. KONFIGURACJA STRONY (USA-MAX NATIVE FEEL) ---
+# --- 1. KONFIGURACJA STRONY ---
 st.set_page_config(
     page_title="CHICAGO '26 | OPERATION HUB 🇺🇸",
     page_icon="✈️",
@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="expanded" 
 )
 
-# --- 2. ZAAWANSOWANY CSS "USA-MAX" (Diner / Marquee Style) ---
+# --- 2. ZAAWANSOWANY CSS "USA-MAX" ---
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
@@ -140,6 +140,53 @@ st.markdown("""
         border: 2px solid #e2e8f0 !important;
         box-shadow: 0 10px 20px rgba(0,0,0,0.04) !important;
     }
+
+    /* NOWE: STYLE DLA KART HARMONOGRAMU (TIMELINE) */
+    .route-card {
+        background-color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border-left: 6px solid #C62828;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        display: flex;
+        align-items: center;
+        transition: transform 0.2s;
+    }
+    .route-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+    .route-date {
+        font-family: 'Anton', sans-serif;
+        font-size: 1.5rem;
+        color: #0B2447;
+        min-width: 120px;
+        text-align: center;
+        border-right: 2px dashed #e2e8f0;
+        padding-right: 20px;
+        margin-right: 20px;
+    }
+    .route-content {
+        flex-grow: 1;
+    }
+    .route-tag {
+        display: inline-block;
+        background-color: #FFC72C;
+        color: #0B2447;
+        font-size: 0.8rem;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 20px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+    .route-desc {
+        font-size: 1.1rem;
+        color: #1e293b;
+        font-weight: 600;
+        margin: 0;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -181,7 +228,6 @@ with col_info:
     st.markdown("<p style='background-color: rgba(255,199,44,0.1); border-radius: 10px; padding: 15px; border: 2px solid #FFC72C; color: #0B2447;'>💡 <strong>MISSION PROFILE:</strong> Bezpieczny, zorganizowany i bezstresowy wylot z dwójką dzieci do USA.</p>", unsafe_allow_html=True)
 
 with col_img_header:
-    # BEZPIECZNE ŁADOWANIE OBRAZU CHICAGO
     try:
         if os.path.exists("chicago.png"):
             img = Image.open("chicago.png")
@@ -190,43 +236,62 @@ with col_img_header:
             img = Image.open("chicago.jpg")
             st.image(img, caption="CHICAGO ROAD Sketch", use_container_width=True)
         else:
-            st.warning("⚠️ Brak pliku chicago.png / chicago.jpg")
+            st.warning("⚠️ Brak pliku chicago.png")
     except Exception as e:
-        st.error("⚠️ Plik chicago jest uszkodzony. Zapisz go ponownie z maila/dysku na komputer i wrzuć jeszcze raz na GitHuba.")
+        st.error("⚠️ Plik chicago jest uszkodzony.")
 
 st.markdown("---")
 
 # --- 6. GŁÓWNY INTERFEJS (ZAKŁADKI) ---
 tab_plan, tab_zadania, tab_bagaz, tab_dzieci = st.tabs([
     "📍 Roadmap", 
-    "✅ Checklist (Menu)", 
-    "🧳 Cargo (Manifest)", 
+    "✅ Checklist", 
+    "🧳 Cargo", 
     "🎮 Kids Hub"
 ])
 
-# --- ZAKŁADKA 1: PLAN PODRÓŻY ---
+# --- ZAKŁADKA 1: PLAN PODRÓŻY (TIMELINE KARTY ZAMIAST TABELI) ---
 with tab_plan:
     st.markdown("<h3 style='color: #0f2027;'>📍 Road Trip & Flights Harmonogram</h3>", unsafe_allow_html=True)
+    
     try:
         df_plan = load_data("Plan")
-        edited_plan = st.data_editor(
-            df_plan, 
-            use_container_width=True, 
-            hide_index=True, 
-            num_rows="dynamic",
-            height=400
-        )
-        if st.button("Zapisz Harmonogram (Sync)", key="save_plan"):
-            conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Plan", data=edited_plan)
-            st.toast("Zapisano Harmonogram!", icon="✅")
+        
+        # Generowanie natywnych kart HTML zamiast nudnej tabeli
+        for index, row in df_plan.iterrows():
+            st.markdown(f"""
+            <div class="route-card">
+                <div class="route-date">{row['Dzien']}</div>
+                <div class="route-content">
+                    <div class="route-tag">{row['Etap']}</div>
+                    <p class="route-desc">{row['Opis']}</p>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.write("") # Odstęp
+        
+        # Panel Edycji ukryty dla czystości interfejsu
+        with st.expander("⚙️ Tryb Edycji Harmonogramu (Admin Table)"):
+            st.caption("Edytuj dane poniżej. Karta główna zaktualizuje się po zapisaniu.")
+            edited_plan = st.data_editor(
+                df_plan, 
+                use_container_width=True, 
+                hide_index=True, 
+                num_rows="dynamic",
+                height=300
+            )
+            if st.button("Zapisz Harmonogram (Sync)", key="save_plan"):
+                conn.update(spreadsheet=SPREADSHEET_URL, worksheet="Plan", data=edited_plan)
+                st.toast("Zapisano Harmonogram!", icon="✅")
+                st.rerun()
+                
     except Exception as e:
         st.error(f"Błąd: {e}")
     
     st.divider()
-    
     st.markdown("<h3 style='color: #0f2027;'>✨ Przystanek na trasie: Des Moines, IOWA</h3>", unsafe_allow_html=True)
     
-    # BEZPIECZNE ŁADOWANIE OBRAZU DES MOINES
     try:
         if os.path.exists("desmoines.png"):
             img = Image.open("desmoines.png")
@@ -234,14 +299,12 @@ with tab_plan:
         elif os.path.exists("desmoines.jpg"):
             img = Image.open("desmoines.jpg")
             st.image(img, caption="IOWA Local Feature Sketch", use_container_width=True)
-        else:
-            st.warning("⚠️ Brak pliku desmoines.png / desmoines.jpg")
     except Exception as e:
-        st.error("⚠️ Plik desmoines jest uszkodzony. Zapisz go ponownie na dysk i wgraj na GitHuba.")
+        st.error("⚠️ Plik desmoines jest uszkodzony.")
 
 # --- ZAKŁADKA 2: ZADANIA ---
 with tab_zadania:
-    st.markdown("<h3 style='color: #0f2027;'>Pre-Departure Checklist (Menu)</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='color: #0f2027;'>Pre-Departure Checklist</h3>", unsafe_allow_html=True)
     try:
         df_zadania = load_data("Zadania")
         df_zadania["Status"] = df_zadania["Status"].astype(str).str.upper() == "TRUE"
@@ -257,9 +320,14 @@ with tab_zadania:
         
         st.write("") 
         
+        # Ulepszona tabela z konfiguracją kolumn
         edited_tasks = st.data_editor(
             df_zadania, 
-            column_config={"Status": st.column_config.CheckboxColumn("Wykonane?", default=False)},
+            column_config={
+                "Status": st.column_config.CheckboxColumn("Wykonane?", default=False, width="small"),
+                "Zadanie": st.column_config.TextColumn("Opis Zadania", width="large"),
+                "Kategoria": st.column_config.SelectboxColumn("Kategoria", width="medium")
+            },
             use_container_width=True, hide_index=True, num_rows="dynamic"
         )
         if st.button("Aktualizuj Menu Zadań", key="save_tasks"):
@@ -283,7 +351,11 @@ with tab_bagaz:
         
         edited_bagaz = st.data_editor(
             filtered_bagaz,
-            column_config={"Spakowane": st.column_config.CheckboxColumn("W walizce?", default=False)},
+            column_config={
+                "Spakowane": st.column_config.CheckboxColumn("W walizce?", default=False, width="small"),
+                "Przedmiot": st.column_config.TextColumn("Rzecz", width="large"),
+                "Wlasciciel": st.column_config.TextColumn("Osoba", width="medium")
+            },
             use_container_width=True, hide_index=True, num_rows="dynamic", height=500
         )
         if st.button("Zapisz Cargo Manifest", key="save_bag"):

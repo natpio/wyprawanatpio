@@ -12,8 +12,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 st.set_page_config(
     page_title="IOWA '26 | OPERATION HUB 🇺🇸",
     page_icon="✈️",
-    layout="wide",
-    initial_sidebar_state="expanded" 
+    layout="wide"
+    # Usunięto boczny pasek całkowicie
 )
 
 # --- FUNKCJA POMOCNICZA: BEZPIECZNE ŁADOWANIE OBRAZÓW ---
@@ -46,6 +46,7 @@ st.markdown("""
     div[data-testid="stHeader"] { visibility: hidden; }
     footer { visibility: hidden; }
     #MainMenu { visibility: hidden; }
+    section[data-testid="stSidebar"] { display: none; } /* Upewniamy się, że sidebar nie istnieje */
 
     /* Czcionki: Anton (nagłówki), Open Sans (tekst), Libre Barcode (kod kreskowy) */
     @import url('https://fonts.googleapis.com/css2?family=Anton&family=Open+Sans:wght@400;600;800&family=Libre+Barcode+39+Text&display=swap');
@@ -63,7 +64,7 @@ st.markdown("""
     .boarding-pass-wrapper {
         display: flex;
         justify-content: center;
-        margin-top: -20px;
+        margin-top: 10px;
         margin-bottom: 40px;
     }
     .ticket {
@@ -311,6 +312,7 @@ st.markdown(f"""
                             <strong>DES MOINES, IA 🌽</strong>
                         </div>
                     </div>
+                    
                     <div class="ticket-row" style="margin-top: 10px; align-items: center;">
                         <div class="ticket-field">
                             <small>Origin</small>
@@ -350,7 +352,7 @@ tab_plan, tab_zadania, tab_bagaz, tab_dzieci = st.tabs([
 with tab_plan:
     st.markdown("<h3 style='color: #0f2027;'>🗺️ Trasa: Poznań ➡️ Chicago ➡️ Des Moines</h3>", unsafe_allow_html=True)
     
-    # Wyświetlanie głównej mapy przy pomocy bezpiecznej funkcji
+    # Wyświetlanie głównej mapy
     display_safe_image("mapa", "Strategiczna Mapa Operacji")
 
     st.divider()
@@ -498,13 +500,3 @@ with tab_dzieci:
             
     except Exception as e:
         st.error(f"Błąd: {e}")
-
-
-# --- SIDEBAR ---
-st.sidebar.markdown("### 👨‍👩‍👧‍👧 ZAŁOGA MISJI:")
-st.sidebar.write("🎒 🏈 **Tata** (The Big Boss)")
-st.sidebar.write("📋 ⚾ **Mama** (Logistics Manager)")
-st.sidebar.write("👧 ✈️ **Córka** (Explorer, 7 lat)")
-st.sidebar.write("👧 🌽 **Córka** (Country Kid, 4 lata)")
-st.sidebar.divider()
-st.sidebar.success("Cel zablokowany: Des Moines, IA 🌽")

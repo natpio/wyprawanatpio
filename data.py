@@ -11,21 +11,24 @@ def get_connection():
 
 def is_truthy(val):
     if isinstance(val, bool): return val
-    # Agresywne usuwanie śmieci z Google Sheets (np. ukryty apostrof 'TRUE)
+    # KRYTYCZNY FIX: Dodajemy 'PRAWDA', bo polski Google Sheets tłumaczy TRUE w API!
     s = str(val).strip().upper().replace("'", "").replace('"', "")
-    return s in ["TRUE", "1", "YES", "TAK", "T"]
+    return s in ["TRUE", "1", "YES", "TAK", "T", "PRAWDA"]
 
 def load_data(sheet_name):
-    # ttl="0s" to najbezpieczniejszy zapis w nowym Streamlit zmuszający do pobrania świeżych danych
-    return get_connection().read(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name, ttl="0s")
+    # ttl=0 (jako int) to najbezpieczniejszy sposób wymuszenia pobrania na świeżo
+    return get_connection().read(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name, ttl=0)
 
 def init_state(sheet_name):
     state_key = f"df_{sheet_name}"
     if state_key not in st.session_state:
         try:
             df = load_data(sheet_name)
-            # Resetujemy index, by upewnić się, że po dodaniu zadania numery rzędów się nie rozjadą
             df = df.reset_index(drop=True)
+            
+            # FIX NAN: Pozbywamy się "NAN" z pustych komórek w arkuszu (np. brak kategorii)
+            df = df.fillna("")
+            
             for col in ["Status", "Spakowane", "Zaliczone"]:
                 if col in df.columns:
                     df[col] = df[col].apply(is_truthy)
@@ -39,9 +42,8 @@ def save_and_sync(sheet_name):
         
         for col in ["Status", "Spakowane", "Zaliczone"]:
             if col in df_to_save.columns:
-                # Zapisujemy twarde booleany lub idealnie puste stringi (żeby uniknąć NaN w chmurze)
                 df_to_save[col] = df_to_save[col].apply(
-                    lambda x: bool(is_truthy(x)) if str(x).strip() != "" and pd.notna(x) else ""
+                    lambda x: bool(is_truthy(x)) if str(x).strip() != "" else ""
                 )
         
         df_to_save = df_to_save.fillna("")
@@ -62,11 +64,9 @@ def toggle_status(sheet_name, index, col_name):
     current_val = df.at[index, col_name]
     new_val = not is_truthy(current_val)
     
-    # Krok 1: Zmiana w komórce
     df.at[index, col_name] = new_val
     
-    # Krok 2: WYMUSZENIE REAKTYWNOŚCI
-    # Przypisujemy df.copy(), aby Streamlit zauważył nowy obiekt i od razu przebudował widok zadań!
+    # Kopia wymusza na Streamlit pełne odświeżenie listy!
     st.session_state[f"df_{sheet_name}"] = df.copy()
     
     if sheet_name == "Grywalizacja" and new_val:

@@ -31,17 +31,22 @@ def init_state(sheet_name):
 
 def save_and_sync(sheet_name):
     try:
-        # Kopiujemy dane z pamięci i zabezpieczamy puste pola (NaN)
+        # Kopiujemy dane z pamięci
         df_to_save = st.session_state[f"df_{sheet_name}"].copy()
-        df_to_save = df_to_save.fillna("")
         
-        # Brutalne nadpisanie na twardy, excelowy tekst
+        # Zamiast na tekst, wymuszamy typ logiczny (True/False).
+        # Zabezpieczamy puste wiersze przed niepotrzebną zamianą na False.
         for col in ["Status", "Spakowane", "Zaliczone"]:
             if col in df_to_save.columns:
-                df_to_save[col] = df_to_save[col].apply(lambda x: "TRUE" if is_truthy(x) else "FALSE")
+                df_to_save[col] = df_to_save[col].apply(
+                    lambda x: bool(is_truthy(x)) if str(x).strip() != "" and pd.notna(x) else None
+                )
         
-        # Wysłanie do Google Sheets
-        get_connection().update(spreadsheet=SPREADSHEET_URL, worksheet=sheet_name, data=df_to_save)
+        # Wypełniamy resztę pustych wartości
+        df_to_save = df_to_save.fillna("")
+        
+        # Wysłanie do Google Sheets (bez wymuszania argumentu spreadsheet - bierze z secrets.toml)
+        get_connection().update(worksheet=sheet_name, data=df_to_save)
         
         # Twarde wyczyszczenie pamięci podręcznej i potwierdzenie
         st.cache_data.clear()

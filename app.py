@@ -6,22 +6,34 @@ from ui import apply_custom_css, render_boarding_pass, jetlag_widget, display_sa
 # --- 1. KONFIGURACJA ---
 st.set_page_config(page_title="IOWA '26 | OPERATION HUB 🇺🇸", page_icon="✈️", layout="wide", initial_sidebar_state="collapsed")
 
+# --- 🚨 KRYTYCZNY FIX NA ODŚWIEŻANIE (F5) 🚨 ---
+# Jeśli sesja jest nowa (np. po odświeżeniu strony), czyścimy cache, 
+# aby wymusić pobranie świeżych danych z Google Sheets zamiast starych z RAMu.
+if "first_run" not in st.session_state:
+    st.cache_data.clear()
+    st.session_state["first_run"] = True
+
 apply_custom_css()
 
+# Inicjalizacja stanów dla wszystkich arkuszy
 for sheet in ["Plan", "Zadania", "Bagaz", "Grywalizacja"]:
     init_state(sheet)
 
+# Przycisk ręcznego wymuszenia synchronizacji
 _, col_sync = st.columns([8, 2])
 if col_sync.button("🔄 Wymuś Odświeżenie Chmury"):
     st.cache_data.clear()
     for key in list(st.session_state.keys()):
-        if key.startswith("df_"): del st.session_state[key]
+        if key.startswith("df_"): 
+            del st.session_state[key]
     st.rerun()
 
+# Efekt balonów po zaliczeniu misji
 if st.session_state.get("show_balloons", False):
     st.balloons()
     st.session_state["show_balloons"] = False
 
+# Licznik dni do wyjazdu
 target_date = datetime.datetime(2026, 6, 30, 8, 0)
 days_left = (target_date - datetime.datetime.now()).days
 render_boarding_pass(days_left)
@@ -81,7 +93,6 @@ with t2:
         else:
             for i, r in df_todo.iterrows():
                 c1, c2 = st.columns([3, 1])
-                # TWÓJ ORYGINALNY WYGLĄD:
                 html_task = f"<div style='background: rgba(255,255,255,0.95); border-left: 5px solid #0B2447; border-radius: 8px; padding: 12px 15px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'><div style='font-weight:600; margin-bottom: 5px;'>📝 {r['Zadanie']}</div><span class='route-tag'>{r['Kategoria']}</span></div>"
                 c1.markdown(html_task.replace('\n', ''), unsafe_allow_html=True)
                 with c2:
@@ -92,7 +103,6 @@ with t2:
         with st.expander(f"🗃️ Archiwum Ukończonych Zadań ({len(df_done)})"):
             for i, r in df_done.iterrows():
                 c1, c2 = st.columns([3, 1])
-                # TWÓJ ORYGINALNY WYGLĄD:
                 html_task = f"<div style='background: rgba(40, 167, 69, 0.1); border-left: 5px solid #28a745; border-radius: 8px; padding: 12px 15px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-decoration: line-through; opacity: 0.6;'><div style='font-weight:600; margin-bottom: 5px;'>✅ {r['Zadanie']}</div><span class='route-tag'>{r['Kategoria']}</span></div>"
                 c1.markdown(html_task.replace('\n', ''), unsafe_allow_html=True)
                 with c2:
@@ -128,7 +138,6 @@ with t3:
             if df_to_pack.empty: st.success("Walizki gotowe do drogi! 🎒")
             for i, r in df_to_pack.iterrows():
                 c1, c2 = st.columns([3, 1])
-                # TWÓJ ORYGINALNY WYGLĄD:
                 html_cargo = f"<div style='background: rgba(255,255,255,0.95); border-left: 5px solid #0B2447; border-radius: 8px; padding: 12px 15px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);'><div style='font-weight:600; margin-bottom: 5px;'>📦 {r['Przedmiot']}</div><span style='background: #0B2447; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;'>{r['Wlasciciel']}</span></div>"
                 c1.markdown(html_cargo.replace('\n', ''), unsafe_allow_html=True)
                 with c2:
@@ -139,7 +148,6 @@ with t3:
             with st.expander(f"🎒 Spakowane ({len(df_packed)})"):
                 for i, r in df_packed.iterrows():
                     c1, c2 = st.columns([3, 1])
-                    # TWÓJ ORYGINALNY WYGLĄD:
                     html_cargo = f"<div style='background: rgba(40, 167, 69, 0.1); border-left: 5px solid #28a745; border-radius: 8px; padding: 12px 15px; margin-bottom: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-decoration: line-through; opacity: 0.6;'><div style='font-weight:600; margin-bottom: 5px;'>🎒 {r['Przedmiot']}</div><span style='background: #0B2447; color: white; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;'>{r['Wlasciciel']}</span></div>"
                     c1.markdown(html_cargo.replace('\n', ''), unsafe_allow_html=True)
                     with c2:
@@ -210,7 +218,6 @@ with t5:
         c_fly = st.text_input("9. Lot", value=st.session_state.get("c_fly", "LH 430"))
         c_15 = st.number_input("15. Wartość pozostawianych prezentów ($)", min_value=0, value=st.session_state.get("c_15", 0))
 
-        # Zapamiętanie w sesji
         for k, v in zip(["c_last", "c_first", "c_dob", "c_mem", "c_street", "c_city", "c_state", "c_pass_country", "c_pass_no", "c_residence", "c_visited", "c_fly", "c_15"], 
                         [c_last, c_first, c_dob, c_mem, c_street, c_city, c_state, c_pass_country, c_pass_no, c_residence, c_visited, c_fly, c_15]):
             st.session_state[k] = v

@@ -2,6 +2,11 @@ import streamlit as st
 import datetime
 from data import init_state, save_and_sync, toggle_status, get_weather
 from ui import apply_custom_css, render_boarding_pass, jetlag_widget, display_safe_image, render_customs_card
+# Import nowej funkcji do PDF
+try:
+    from pdf_utils import generate_customs_pdf
+except ImportError:
+    generate_customs_pdf = None
 
 # --- 1. KONFIGURACJA ---
 st.set_page_config(
@@ -12,11 +17,8 @@ st.set_page_config(
 )
 
 # --- 🚨 KRYTYCZNY FIX NA ODŚWIEŻANIE (F5) 🚨 ---
-# Mechanizm wykrywający nowe ładowanie strony. Czyści cache i stare dane sesji,
-# aby wymusić pobranie świeżych statusów (TRUE/FALSE) bezpośrednio z Google Sheets.
 if "first_run" not in st.session_state:
     st.cache_data.clear()
-    # Usuwamy stare ramki danych z sesji, aby nie blokowały świeżego pobierania
     for key in list(st.session_state.keys()):
         if key.startswith("df_"): 
             del st.session_state[key]
@@ -244,3 +246,17 @@ with t5:
             'c_12': "NO (X)", 'c_13': "NO (X)", 'c_14': "NO (X)", 'c_15': c_15
         }
         render_customs_card(dict_data)
+        
+        # --- NOWA SEKCJA POBIERANIA PDF ---
+        st.write("")
+        if generate_customs_pdf:
+            pdf_bytes = generate_customs_pdf(dict_data)
+            st.download_button(
+                label="📥 Pobierz Deklarację (PDF)",
+                data=pdf_bytes,
+                file_name=f"CBP_6059B_{c_last}_{c_first}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        else:
+            st.warning("⚠️ Moduł PDF (pdf_utils.py) nie został znaleziony.")

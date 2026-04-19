@@ -1,14 +1,15 @@
 import streamlit as st
 import datetime
 from data import init_state, save_and_sync, toggle_status, get_weather
-from ui import apply_custom_css, render_boarding_pass, jetlag_widget, display_safe_image, render_customs_card
-# Import nowej funkcji do PDF
+from ui import apply_custom_css, render_boarding_pass, jetlag_widget, display_safe_image, render_customs_card, set_mobile_icon
+
+# Import funkcji do PDF z obsługą błędów
 try:
     from pdf_utils import generate_customs_pdf
 except ImportError:
     generate_customs_pdf = None
 
-# --- 1. KONFIGURACJA ---
+# --- 1. KONFIGURACJA STRONY ---
 st.set_page_config(
     page_title="IOWA '26 | OPERATION HUB 🇺🇸", 
     page_icon="✈️", 
@@ -24,9 +25,13 @@ if "first_run" not in st.session_state:
             del st.session_state[key]
     st.session_state["first_run"] = True
 
+# --- INICJALIZACJA WYGLĄDU I IKON ---
 apply_custom_css()
+# Wstrzyknięcie JS podmieniającego ikonę na urządzeniach mobilnych
+# Pamiętaj, aby plik ikona.png lub ikona.jpg znajdował się w katalogu głównym
+set_mobile_icon("ikona.png")
 
-# Inicjalizacja stanów dla wszystkich zakładek
+# Inicjalizacja stanów dla wszystkich zakładek (Pobieranie z Google Sheets)
 for sheet in ["Plan", "Zadania", "Bagaz", "Grywalizacja"]:
     init_state(sheet)
 
@@ -49,6 +54,7 @@ target_date = datetime.datetime(2026, 6, 30, 8, 0)
 days_left = (target_date - datetime.datetime.now()).days
 render_boarding_pass(days_left)
 
+# Widgety Pogodowe i Jet-Lag
 st.markdown("### 🌤️ Jet-Lag Planner (Pogoda i Czas Lokalny)")
 w1, w2, w3 = st.columns(3)
 with w1: jetlag_widget("Poznań", "🇵🇱", get_weather(52.4064, 16.9252), "Europe/Warsaw", "Baza Domowa (CET)", "#0B2447")
@@ -247,7 +253,7 @@ with t5:
         }
         render_customs_card(dict_data)
         
-        # --- NOWA SEKCJA POBIERANIA PDF ---
+        # --- SEKCJA POBIERANIA PDF ---
         st.write("")
         if generate_customs_pdf:
             pdf_bytes = generate_customs_pdf(dict_data)
